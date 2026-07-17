@@ -19,6 +19,11 @@ subprojects {
             }
         }
 
+        // Prevents encoding issues
+        tasks.withType<JavaCompile>().configureEach {
+            options.encoding = "UTF-8"
+        }
+
         tasks.withType<Test>().configureEach {
             useJUnitPlatform()
         }
