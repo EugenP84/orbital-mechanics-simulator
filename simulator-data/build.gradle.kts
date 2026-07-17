@@ -1,0 +1,10 @@
+plugins {
+    `java-library`
+}
+
+dependencies {
+    implementation(project(":simulator-core"))
+
+    testImplementation(platform("org.junit:junit-bom:5.10.2"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+}
