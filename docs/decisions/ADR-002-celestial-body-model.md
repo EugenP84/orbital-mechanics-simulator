@@ -1,8 +1,8 @@
 # ADR-002: Composition-Based Celestial Body Model with Definition–State Separation
 
-**Status:** Accepted
-**Date:** 2026-07-25
-**Modules:** simulator-core (model, math), simulator-data (nasa)
+**Status:** Accepted  
+**Date:** 25.07.2026  
+**Modules:** simulator-core (model, math), simulator-data (nasa)  
 **Related:** Project Proposal §2.2 (Simulation Engine), §3.5 (Design Patterns); Objective 6 (Numerical Integrator Comparison)
 
 ---
