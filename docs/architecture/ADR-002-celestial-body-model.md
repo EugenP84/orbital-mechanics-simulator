@@ -119,17 +119,17 @@ provides a simpler solution for the current architecture.
 
 ### Option D — Composition with definition–state separation (Chosen)
 
-| Type | Module | Responsibility |
-|---|---|---|
-| `CelestialBody` (record) | core/model | Immutable identity and physical properties (id, name, type, mass, radius) |
-| `BodyType` (enum) | core/model | Classification (`STAR`, `PLANET`, `ASTEROID`) |
-| `StateVector` (record) | core/math | Immutable simulation state (position, velocity) |
-| `SimulationBody` | core/model | Mutable runtime entity associating a `CelestialBody` with its current `StateVector` |
-| `CelestialBodyFactory` | core/model | Validation, default values and construction of valid core-domain objects |
-| `NeoMetadata` (record) | data/nasa | NASA catalogue metadata describing the object itself |
-| `CloseApproach` (record) | data/nasa | One recorded close-approach event |
+| Type                         | Module | Responsibility |
+|------------------------------|---|---|
+| `CelestialBody` (record)     | core/model | Immutable identity and physical properties (id, name, type, mass, radius) |
+| `CelestialBodyType` (enum)   | core/model | Classification (`STAR`, `PLANET`, `ASTEROID`) |
+| `StateVector` (record)       | core/math | Immutable simulation state (position, velocity) |
+| `SimulationBody`             | core/model | Mutable runtime entity associating a `CelestialBody` with its current `StateVector` |
+| `CelestialBodyFactory`       | core/model | Validation, default values and construction of valid core-domain objects |
+| `NeoMetadata` (record)       | data/nasa | NASA catalogue metadata describing the object itself |
+| `CloseApproach` (record)     | data/nasa | One recorded close-approach event |
 | `NeoCatalogueEntry` (record) | data/nasa | NASA DTO containing metadata and close-approach history |
-| `NeoBodyMapper` | data/nasa | Maps NASA DTOs into source-independent core creation requests |
+| `NeoBodyMapper`              | data/nasa | Maps NASA DTOs into source-independent core creation requests |
 
 The data layer converts `NeoCatalogueEntry` instances into neutral core-domain
 creation requests before invoking the factory. Consequently, simulator-core
@@ -156,7 +156,7 @@ reserved for future cases in which genuinely different behaviour requires
 polymorphic substitution.
 
 **Classification.** Astronomical classification is represented using the
-`BodyType` enumeration rather than inheritance because simulation behaviour
+`CelestialBodyType` enumeration rather than inheritance because simulation behaviour
 does not currently vary polymorphically.
 
 **Composition.** External catalogue information is modelled separately from
