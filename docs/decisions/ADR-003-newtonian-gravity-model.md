@@ -1,7 +1,7 @@
 # ADR-003: Newtonian Gravity Model and Acceleration-Based Physics Interface
 
 **Status:** Accepted  
-**Date:** 07.08.2026
+**Date:** 07.08.2026  
 **Modules:** simulator-core (physics, math)  
 **Related:** Project Proposal §2.2 (Simulation Engine); Objective 2 (integration methods), Objective 6 (energy conservation, trajectory accuracy, NEO validation); ADR-002 (definition–state separation)
 
