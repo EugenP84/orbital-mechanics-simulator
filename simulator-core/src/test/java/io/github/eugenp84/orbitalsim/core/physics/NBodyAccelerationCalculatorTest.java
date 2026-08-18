@@ -270,10 +270,10 @@ class NBodyAccelerationCalculatorTest {
 
     @Test
     void accelerationDependsOnPositionButNotVelocity() {
-        // ADR-004 accepts complete StateVector snapshots although Newtonian
-        // gravity depends only on position. Exact equality is asserted because
-        // the position inputs are bit-identical between the two calls, so the
-        // computed results must be bit-identical unless velocity were read.
+        // ADR-005 §4 requires acceleration to depend on position only. Exact
+        // equality is asserted because the position inputs are bit-identical
+        // between the two calls, so the computed results must be bit-identical
+        // unless velocity were read.
         NBodyAccelerationCalculator calculator = new NBodyAccelerationCalculator(
                 new GravitationalBodyConfig[]{
                         GravitationalBodyConfig.contributing(1e30),
@@ -328,7 +328,60 @@ class NBodyAccelerationCalculatorTest {
         assertVectorEquals(before, calculator.accelerationsAt(states)[1], before.magnitude());
     }
 
-    // --- Contract validation ---
+    // --- AccelerationModel contract conformance ---
+
+    @Test
+    void implementsAccelerationModel() {
+        assertInstanceOf(AccelerationModel.class, new NBodyAccelerationCalculator(
+                new GravitationalBodyConfig[]{
+                        GravitationalBodyConfig.contributing(1e30)}));
+    }
+
+    @Test
+    void returnedAccelerationsAreFinite() {
+        // The AccelerationModel contract requires finite components throughout
+        NBodyAccelerationCalculator calculator = new NBodyAccelerationCalculator(
+                new GravitationalBodyConfig[]{
+                        GravitationalBodyConfig.contributing(PhysicalConstants.SOLAR_MASS),
+                        GravitationalBodyConfig.contributing(PhysicalConstants.EARTH_MASS)});
+
+        Vector3D[] accelerations = calculator.accelerationsAt(new StateVector[]{
+                restingAt(0, 0, 0),
+                restingAt(PhysicalConstants.ASTRONOMICAL_UNIT, 0, 0)});
+
+        for (Vector3D acceleration : accelerations) {
+            assertTrue(Double.isFinite(acceleration.x()));
+            assertTrue(Double.isFinite(acceleration.y()));
+            assertTrue(Double.isFinite(acceleration.z()));
+        }
+    }
+
+    @Test
+    void extremeConfigurationsAreRejectedRatherThanReturningNonFiniteValues() {
+        // The AccelerationModel contract requires finite returned components.
+        // An extreme but individually representable configuration must be
+        // rejected somewhere in the chain rather than yielding Infinity.
+        //
+        // In this configuration GravityCalculator rejects the contribution
+        // first: it computes the unit-vector scale factor as
+        // accelerationMagnitude / distance, i.e. G·M/r³, which overflows
+        // before the contribution G·M/r² does. The exception therefore
+        // originates from the pairwise guard, not from the accumulated-total
+        // guard in this class (see requireFiniteTotal).
+        double extremeMass = 1.0e300;
+
+        NBodyAccelerationCalculator calculator = new NBodyAccelerationCalculator(
+                new GravitationalBodyConfig[]{
+                        GravitationalBodyConfig.contributing(1.0e24),
+                        GravitationalBodyConfig.contributing(extremeMass)});
+
+        StateVector[] states = {
+                restingAt(0, 0, 0),
+                restingAt(8.2e-10, 0, 0)};
+
+        assertThrows(IllegalArgumentException.class,
+                () -> calculator.accelerationsAt(states));
+    }
 
     @Test
     void nullConfigurationIsRejected() {

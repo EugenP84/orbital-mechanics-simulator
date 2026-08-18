@@ -27,6 +27,11 @@ import java.util.Objects;
  * contributing source but adds nothing to any other body, which is how the
  * restricted three-body model is expressed.
  * <p>
+ * Returned accelerations are guaranteed finite, as required by
+ * {@link AccelerationModel}. This is verified on the accumulated total rather
+ * than assumed: {@code GravityCalculator} guarantees each contribution is
+ * finite, but a sum of finite vectors may still overflow.
+ * <p>
  * Instances are immutable and hold no state between evaluations: the same
  * calculator may be reused across the multiple trial-state evaluations
  * performed within a single integration step.
@@ -37,7 +42,7 @@ import java.util.Objects;
  * <p>
  * All quantities are in canonical SI units.
  */
-public final class NBodyAccelerationCalculator {
+public final class NBodyAccelerationCalculator implements AccelerationModel {
 
     private final GravitationalBodyConfig[] bodyConfigs;
 
@@ -66,15 +71,17 @@ public final class NBodyAccelerationCalculator {
      * @param states state of each body, in the same order as the configuration
      *               supplied at construction
      * @return acceleration in m·s⁻² for each body, in the same order; a fresh
-     *         array on every call
+     *         array on every call, with finite components throughout
      * @throws NullPointerException     if the array or any element is null
      * @throws IllegalArgumentException if the number of states does not match
-     *         the number of configured bodies, or if any evaluated
-     *         source-target interaction produces an invalid geometry (see
-     *         {@link GravityCalculator#accelerationBetween}). Interactions
+     *         the number of configured bodies, if any evaluated source-target
+     *         interaction produces an invalid geometry (see
+     *         {@link GravityCalculator#accelerationBetween}), or if an
+     *         accumulated acceleration is not representable. Interactions
      *         involving a non-contributing source are never evaluated and
      *         therefore cannot raise this exception.
      */
+    @Override
     public Vector3D[] accelerationsAt(StateVector[] states) {
         requireMatchingStates(states);
 
@@ -93,7 +100,7 @@ public final class NBodyAccelerationCalculator {
                         bodyConfigs[source].mass()));
             }
 
-            accelerations[target] = total;
+            accelerations[target] = requireFiniteTotal(total, target);
         }
 
         return accelerations;
@@ -110,5 +117,29 @@ public final class NBodyAccelerationCalculator {
         for (int i = 0; i < states.length; i++) {
             Objects.requireNonNull(states[i], "state at index " + i + " must not be null");
         }
+    }
+
+    /**
+     * Verifies that an accumulated acceleration is representable. Individual
+     * contributions are guaranteed finite by
+     * {@link GravityCalculator#accelerationBetween}, but their sum may still
+     * overflow, and the {@link AccelerationModel} contract requires finite
+     * returned vectors.
+     * <p>
+     * {@link IllegalArgumentException} is raised rather than
+     * {@link IllegalStateException}: this component is evaluating supplied
+     * state and configuration that it cannot represent, which is the same
+     * situation, and the same response, as an overflowing single contribution
+     * in {@code GravityCalculator}.
+     */
+    private static Vector3D requireFiniteTotal(Vector3D total, int targetIndex) {
+        if (!Double.isFinite(total.x())
+                || !Double.isFinite(total.y())
+                || !Double.isFinite(total.z())) {
+            throw new IllegalArgumentException(
+                    "Total gravitational acceleration is not finite for body at index "
+                            + targetIndex);
+        }
+        return total;
     }
 }
