@@ -37,8 +37,7 @@ consumes, what it produces, and what it is forbidden from doing.
 
 ### 1. Integrators are pure snapshot transformers
 
-An integrator consumes an immutable snapshot of the whole system and returns a
-new snapshot. It holds no state between calls.
+An integrator consumes a read-only snapshot of the whole system, represented by an array of immutable StateVector elements, and returns a new snapshot. It holds no state between calls.
 
 ```
 StateVector[] step(
@@ -221,7 +220,7 @@ drift to "Euler" without qualification would misrepresent the Euler family.
   than from careful reset logic.
 - Runge–Kutta 4's intermediate stages are ordinary arguments rather than a
   special case, because trial states are never confused with committed state.
-- A failed step cannot leave the simulation in a partially updated state.
+- A conforming integrator cannot leave runtime simulation bodies in a partially updated state, because state commitment occurs only after a complete next snapshot has been returned successfully.
 - The three integration strategies are genuinely substitutable over any
   conforming acceleration model, because the model contract is constrained to
   what all three require.
