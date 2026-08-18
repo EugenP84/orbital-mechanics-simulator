@@ -1,9 +1,9 @@
 # ADR-005: Pure Snapshot-Based Numerical Integration Contract
 
 **Status:** Accepted  
-**Date:** 18.08.2026    
+**Date:** 18.08.2026  
 **Modules:** simulator-core (integrator, physics, simulation)  
-**Related:** Project Proposal §2.2 (Simulation Engine), §3.1 (Numerical Methods); Objective 2 (three interchangeable integration methods), Objective 6 (integrator comparison); ADR-002 (definition–state separation), ADR-004 (arbitrary-state acceleration evaluation)
+**Related:** Project Proposal §2.2 (Simulation Engine), §3.1 (Numerical Methods); Objective 2 (three interchangeable integration methods), Objective 6 (integrator comparison); ADR-002 (definition–state separation), ADR-003 (gravitational model), ADR-004 (arbitrary-state acceleration evaluation)
 
 ---
 
@@ -31,13 +31,15 @@ consumes, what it produces, and what it is forbidden from doing.
 - Support multi-stage methods whose intermediate states are not committed
   state.
 - Preserve genuine substitutability across the three integration strategies.
+- Allow numerical breakdown to be observed rather than concealed.
 - Prevent presentation concerns from being conflated with numerical accuracy.
 
 ## Decision
 
 ### 1. Integrators are pure snapshot transformers
 
-An integrator consumes a read-only snapshot of the whole system, represented by an array of immutable StateVector elements, and returns a new snapshot. It holds no state between calls.
+An integrator consumes an immutable snapshot of the whole system and returns a
+new snapshot. It holds no state between calls.
 
 ```
 StateVector[] step(
@@ -98,9 +100,26 @@ public interface AccelerationModel {
 }
 ```
 
+The abstraction is mathematical rather than specifically gravitational. The
+production implementation is `NBodyAccelerationCalculator`, but simpler models
+are legitimate — a constant-acceleration implementation allows an integrator
+to be tested independently of gravity.
+
 **Return contract.** Implementations must return a non-null array containing
 exactly one acceleration per supplied state, in corresponding body order, with
 no null elements.
+
+Every returned acceleration vector must additionally contain finite
+components. An integrator depends on this interface rather than on any
+particular implementation, so it cannot rely on implementation-specific
+safeguards; a non-finite acceleration admitted here would propagate into state
+that `StateVector` deliberately permits, spreading across every body within a
+few steps and surfacing far from its origin.
+
+This obligation is real rather than inherited. `GravityCalculator` guarantees
+that each pairwise contribution is finite, but a sum of finite vectors may
+still overflow, so `NBodyAccelerationCalculator` verifies its accumulated
+total before returning it.
 
 **Model scope.** For the current project, an `AccelerationModel` must
 determine acceleration from body positions and fixed model configuration only.
@@ -109,10 +128,10 @@ on complete state snapshots, but it must not influence the computed
 acceleration.
 
 This restriction exists because standard Velocity Verlet evaluates
-acceleration at the updated position before completing the velocity update,
-and therefore assumes an acceleration that does not depend on velocity.
-Permitting velocity-dependent models would leave Forward Euler and RK4 valid
-while invalidating standard Velocity Verlet over the same model, defeating the
+acceleration at the updated position before completing its velocity update,
+and therefore assumes acceleration is independent of velocity. Permitting
+velocity-dependent models would leave Forward Euler and RK4 valid while
+invalidating standard Velocity Verlet over the same model, defeating the
 substitutability that Objective 2 requires and that section 3 above claims to
 preserve. Supporting velocity-dependent forces — aerodynamic drag, for
 instance — would require revisiting this contract and, in particular, the
@@ -125,7 +144,10 @@ normative for every implementation of the interface.
 **Verification.** Integrators verify the return contract before using the
 result. A violation raises `IllegalStateException` rather than
 `IllegalArgumentException`: the caller supplied valid arguments, and a
-collaborator failed to honour its own contract.
+collaborator failed to honour its own contract. Where an implementation
+detects that it cannot itself produce a representable result, it raises
+`IllegalArgumentException`, consistent with the physics-boundary policy of
+ADR-003.
 
 ### 5. Arrays are read-only snapshot containers
 
@@ -187,12 +209,44 @@ This ADR does not decide how the engine derives step size from a speed
 setting; that policy belongs to the simulation engine. It fixes only that the
 integrator API accepts the actual numerical step size and nothing else.
 
-### 9. Empty systems
+### 9. Finite results are not guaranteed
+
+Integrators validate their arguments and the `AccelerationModel` return
+contract, but do **not** guarantee that the state they produce remains finite.
+
+The two cases differ. A non-finite acceleration returned by a model violates
+that collaborator's declared mathematical contract. A non-finite state
+produced from otherwise valid inputs instead represents numerical breakdown of
+the integration run — a phenomenon this project exists partly to measure.
+Forward Euler is the baseline precisely because it degrades, and the timestep
+at which usable propagation breaks down is evidence for the comparison
+required by Objective 6. Reclassifying that outcome as a contract violation
+would prevent the evaluation harness from observing it, and would make the
+failure boundary an artefact of each method's stability rather than of any
+defect.
+
+Non-finite state must not be confused with physical escape: a hyperbolic
+escape trajectory remains finite indefinitely. A non-finite result means the
+numerical representation has ceased to provide a usable state.
+
+Detection and policy therefore belong to the caller, which has the context to
+respond appropriately — a learning scenario should terminate and report
+numerical instability, while an evaluation harness should record the method,
+timestep and step index at which divergence first appeared.
+
+**Consequence for the engine.** The caller must inspect a returned snapshot
+before committing it and before invoking the next step. A non-finite state fed
+back into the acceleration model will fail inside the gravity layer on the
+following step, losing the information that breakdown began one step earlier.
+
+### 10. Empty systems
 
 A zero-length system returns a zero-length result, consistent with the
-aggregation and energy layers. No special-casing by callers is required.
+aggregation and energy layers. No special-casing by callers is required. The
+acceleration model is still invoked and its return contract still verified, so
+a model returning accelerations for a zero-length system is detected.
 
-### 10. Forward Euler is the first implementation
+### 11. Forward Euler is the first implementation
 
 The baseline is **Forward (explicit) Euler**, advancing both state components
 from current values:
@@ -220,10 +274,15 @@ drift to "Euler" without qualification would misrepresent the Euler family.
   than from careful reset logic.
 - Runge–Kutta 4's intermediate stages are ordinary arguments rather than a
   special case, because trial states are never confused with committed state.
-- A conforming integrator cannot leave runtime simulation bodies in a partially updated state, because state commitment occurs only after a complete next snapshot has been returned successfully.
+- A failed step cannot leave the simulation in a partially updated state.
 - The three integration strategies are genuinely substitutable over any
   conforming acceleration model, because the model contract is constrained to
   what all three require.
+- Non-finite values cannot enter integration through the acceleration model,
+  so a non-finite state identifies the integration step itself as the point of
+  breakdown.
+- Numerical instability remains observable as an experimental outcome rather
+  than being converted into an exception.
 - Presentation speed is prevented from being directly conflated with numerical
   step size at the integrator boundary.
 
@@ -235,6 +294,10 @@ drift to "Euler" without qualification would misrepresent the Euler family.
 - The engine must extract snapshots before a step and commit them afterwards,
   rather than integrators updating bodies in place. This is the intended
   separation, but it is code the engine must contain.
+- Callers must inspect returned snapshots for finiteness rather than relying
+  on the integrator to fail fast. This is deliberate (§9), but it is a
+  responsibility that both the engine and the evaluation harness must
+  implement.
 - Velocity-dependent acceleration models are excluded by contract, so
   aerodynamic drag or thrust would require revisiting section 4.
 - Backward integration is unavailable until the restriction is revisited.
@@ -242,13 +305,17 @@ drift to "Euler" without qualification would misrepresent the Euler family.
   enforced one: Java arrays cannot be made immutable, and defensive copying at
   every boundary would be disproportionate at this scale.
 - Defensive verification of the `AccelerationModel` return contract is
-  repeated in each integrator. Whether this is extracted to a shared helper
-  will be decided once genuine duplication exists across the three
-  implementations, rather than pre-emptively.
+  repeated in each integrator. Whether this is extracted to a shared
+  package-private helper will be decided once genuine duplication exists
+  across the three implementations, rather than pre-emptively. An abstract
+  base class is not the intended form: the three methods share an interface,
+  not an is-a relationship, and a base class would reimpose the constructor
+  assumptions section 3 deliberately avoids.
 
 ## Guiding Principle
 
 Integration is mathematics over immutable snapshots; committing state is the
 engine's responsibility; constrain the collaborator contract to what every
-strategy requires; and treat the numerical step size as a physical quantity,
-not a presentation setting.
+strategy requires; treat numerical breakdown as an observation rather than a
+defect; and treat the numerical step size as a physical quantity, not a
+presentation setting.
