@@ -4,8 +4,6 @@ import io.github.eugenp84.orbitalsim.core.math.StateVector;
 import io.github.eugenp84.orbitalsim.core.math.Vector3D;
 import io.github.eugenp84.orbitalsim.core.physics.AccelerationModel;
 
-import java.util.Objects;
-
 /**
  * Forward (explicit) Euler integration.
  * <p>
@@ -27,7 +25,10 @@ import java.util.Objects;
  * (ADR-005 §11).
  * <p>
  * The method is first-order accurate: local truncation error is O(Δt²) per
- * step and global error O(Δt).
+ * step and global error O(Δt). It performs <strong>one</strong> acceleration
+ * evaluation per step. That count is an implementation characteristic of this
+ * method rather than part of the {@link Integrator} contract, and forms the
+ * baseline for the computational comparison in Objective 6.
  * <p>
  * The returned state is not guaranteed finite. A non-finite result indicates
  * numerical breakdown of the integration run rather than a defect, and is left
@@ -43,10 +44,11 @@ public final class EulerIntegrator implements Integrator {
             double timeStepSeconds,
             AccelerationModel accelerationModel) {
 
-        requireValidArguments(currentStates, timeStepSeconds, accelerationModel);
+        IntegratorValidation.requireValidArguments(
+                currentStates, timeStepSeconds, accelerationModel);
 
-        Vector3D[] accelerations = accelerationModel.accelerationsAt(currentStates);
-        requireValidAccelerations(accelerations, currentStates.length);
+        Vector3D[] accelerations = IntegratorValidation.requireValidAccelerations(
+                accelerationModel.accelerationsAt(currentStates), currentStates.length);
 
         StateVector[] nextStates = new StateVector[currentStates.length];
 
@@ -62,53 +64,5 @@ public final class EulerIntegrator implements Integrator {
         }
 
         return nextStates;
-    }
-
-    private static void requireValidArguments(
-            StateVector[] currentStates,
-            double timeStepSeconds,
-            AccelerationModel accelerationModel) {
-
-        Objects.requireNonNull(currentStates, "currentStates must not be null");
-        Objects.requireNonNull(accelerationModel, "accelerationModel must not be null");
-
-        if (timeStepSeconds <= 0.0 || !Double.isFinite(timeStepSeconds)) {
-            throw new IllegalArgumentException(
-                    "timeStepSeconds must be positive and finite, was: " + timeStepSeconds);
-        }
-        for (int i = 0; i < currentStates.length; i++) {
-            Objects.requireNonNull(currentStates[i],
-                    "state at index " + i + " must not be null");
-        }
-    }
-
-    /**
-     * Verifies the {@link AccelerationModel} return contract. Failures here
-     * indicate a collaborator defect rather than a caller error, so
-     * {@link IllegalStateException} is raised (ADR-005 §6).
-     */
-    private static void requireValidAccelerations(Vector3D[] accelerations, int expectedLength) {
-        if (accelerations == null) {
-            throw new IllegalStateException("AccelerationModel returned null");
-        }
-        if (accelerations.length != expectedLength) {
-            throw new IllegalStateException(
-                    "AccelerationModel returned " + accelerations.length
-                            + " accelerations for " + expectedLength + " states");
-        }
-        for (int i = 0; i < accelerations.length; i++) {
-            Vector3D acceleration = accelerations[i];
-
-            if (acceleration == null) {
-                throw new IllegalStateException(
-                        "AccelerationModel returned null acceleration at index " + i);
-            }
-            if (!Double.isFinite(acceleration.x())
-                    || !Double.isFinite(acceleration.y())
-                    || !Double.isFinite(acceleration.z())) {
-                throw new IllegalStateException(
-                        "AccelerationModel returned non-finite acceleration at index " + i);
-            }
-        }
     }
 }
