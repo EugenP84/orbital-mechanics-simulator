@@ -11,6 +11,8 @@ package io.github.eugenp84.orbitalsim.core.math;
  * Values follow CODATA and IAU recommendations as published in
  * standard astrodynamics references (Bate, Mueller and White, 1971;
  * Curtis, 2024).
+ *
+ * @author Eugeniu PLATITA
  */
 public final class PhysicalConstants {
 

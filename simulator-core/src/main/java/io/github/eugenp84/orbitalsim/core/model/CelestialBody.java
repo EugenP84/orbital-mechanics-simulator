@@ -13,6 +13,8 @@ package io.github.eugenp84.orbitalsim.core.model;
  * @param type   astronomical classification, never null
  * @param mass   mass in kilograms, strictly positive
  * @param radius mean radius in metres, strictly positive
+ *
+ * @author Eugeniu PLATITA
  */
 public record CelestialBody(
         String id,

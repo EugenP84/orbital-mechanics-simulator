@@ -5,6 +5,8 @@ package io.github.eugenp84.orbitalsim.core.math;
  * accelerations and forces throughout the simulation.
  * <p>
  * All operations return new instances; no method mutates state.
+ *
+ * @author Eugeniu PLATITA
  */
 public record Vector3D(double x, double y, double z) {
 

@@ -33,6 +33,8 @@ import io.github.eugenp84.orbitalsim.core.math.Vector3D;
  * container. An implementation must not modify it or replace any of its
  * elements: a multi-stage integrator may still be using that array for a later
  * stage of the same step.
+ *
+ * @author Eugeniu PLATITA
  */
 public interface AccelerationModel {
 

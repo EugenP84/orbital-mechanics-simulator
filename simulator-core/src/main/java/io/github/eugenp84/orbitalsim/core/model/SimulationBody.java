@@ -15,6 +15,8 @@ import java.util.Objects;
  * State replacement is an atomic reference swap of a complete immutable
  * snapshot. Callers (integrators via the engine) must compute all next
  * states before committing any of them.
+ *
+ * @author Eugeniu PLATITA
  */
 public final class SimulationBody {
 

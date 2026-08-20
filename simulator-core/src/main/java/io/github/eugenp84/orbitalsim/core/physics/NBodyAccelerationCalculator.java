@@ -131,6 +131,8 @@ public final class NBodyAccelerationCalculator implements AccelerationModel {
      * state and configuration that it cannot represent, which is the same
      * situation, and the same response, as an overflowing single contribution
      * in {@code GravityCalculator}.
+     *
+     * @author Eugeniu PLATITA
      */
     private static Vector3D requireFiniteTotal(Vector3D total, int targetIndex) {
         if (!Double.isFinite(total.x())

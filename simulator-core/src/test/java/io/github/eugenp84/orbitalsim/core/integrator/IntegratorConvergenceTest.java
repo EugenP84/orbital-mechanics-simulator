@@ -37,6 +37,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * order. Systematic order estimation — several timesteps, log-log slope
  * fitting, separate treatment of energy and trajectory error — belongs to the
  * evaluation work for Objective 6.
+ *
+ * @author Eugeniu PLATITA
  */
 class IntegratorConvergenceTest {
 

@@ -44,6 +44,8 @@ import java.util.Objects;
  * All quantities are in canonical SI units: energies in joules. The class is
  * stateless and its methods are pure functions of their arguments. Inputs are
  * validated independently of invariants guaranteed elsewhere.
+ *
+ * @author Eugeniu PLATITA
  */
 public final class EnergyCalculator {
 

@@ -26,6 +26,8 @@ package io.github.eugenp84.orbitalsim.core.physics;
  *
  * @param mass               mass in kilograms; must be positive and finite
  * @param contributesGravity whether this body acts as a gravitational source
+ *
+ * @author Eugeniu PLATITA
  */
 public record GravitationalBodyConfig(double mass, boolean contributesGravity) {
 

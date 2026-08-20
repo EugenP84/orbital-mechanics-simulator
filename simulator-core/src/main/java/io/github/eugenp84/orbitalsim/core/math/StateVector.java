@@ -18,6 +18,8 @@ import java.util.Objects;
  *
  * @param position position in metres, never null
  * @param velocity velocity in m·s⁻¹, never null
+ *
+ * @author Eugeniu PLATITA
  */
 public record StateVector(Vector3D position, Vector3D velocity) {
 

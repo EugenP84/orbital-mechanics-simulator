@@ -15,6 +15,8 @@ import java.util.Objects;
  * class, because the integrators share an interface rather than an is-a
  * relationship, and a base class would reimpose the constructor assumptions
  * that ADR-005 §3 deliberately avoids.
+ *
+ * @author Eugeniu PLATITA
  */
 final class IntegratorValidation {
 

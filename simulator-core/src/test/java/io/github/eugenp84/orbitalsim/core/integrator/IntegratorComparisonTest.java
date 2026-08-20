@@ -81,15 +81,13 @@ class IntegratorComparisonTest {
 
     @Test
     void eulerAndVerletDifferByTheExpectedSecondOrderTerm() {
-        // The single-step position difference between the two methods is
-        // analytically known rather than arbitrary:
+        // The single-step position difference between the two methods is analytically known rather than arbitrary:
         //
         //   Euler:  r + v·Δt
         //   Verlet: r + (v + ½·a·Δt)·Δt  =  r + v·Δt + ½·a·Δt²
         //
-        // so they differ by exactly ½·a·Δt². Asserting that quantity checks
-        // the relationship between the methods rather than merely that both
-        // produce a similar answer.
+        // so they differ by exactly ½·a·Δt². Asserting that quantity checks the relationship between the methods rather than merely that both produce a similar answer.
+
         StateVector[] input = initialStates();
         double dt = PERIOD / 100_000;
 

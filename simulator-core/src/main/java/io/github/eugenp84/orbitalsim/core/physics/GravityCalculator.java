@@ -25,6 +25,8 @@ import java.util.Objects;
  * methods are pure functions of their arguments. Inputs are validated
  * independently of invariants guaranteed elsewhere in the domain model,
  * because this is a public API over primitive values (ADR-003).
+ *
+ * @author Eugeniu PLATITA
  */
 public final class GravityCalculator {
 

@@ -58,6 +58,8 @@ import io.github.eugenp84.orbitalsim.core.physics.AccelerationModel;
  * for the caller to detect and interpret (ADR-005 §9).
  * <p>
  * Instances are stateless and may be reused across steps and across systems.
+ *
+ * @author Eugeniu PLATITA
  */
 public final class RungeKutta4Integrator implements Integrator {
 

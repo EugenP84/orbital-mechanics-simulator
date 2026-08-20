@@ -24,6 +24,8 @@ import io.github.eugenp84.orbitalsim.core.physics.AccelerationModel;
  * length, and preserves body order. Individual returned states need not be
  * newly allocated: {@link StateVector} is immutable, so returning an unchanged
  * input element is safe.
+ *
+ * @author Eugeniu PLATITA
  */
 public interface Integrator {
 
