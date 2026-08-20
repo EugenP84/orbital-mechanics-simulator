@@ -72,6 +72,7 @@ public final class SimulationEngine {
 
     private Integrator integrator;
     private long completedSteps;
+    private double accumulatedSeconds;
 
     /**
      * @param initialBodies          definition–state pairs for every body, in
@@ -117,6 +118,7 @@ public final class SimulationEngine {
         }
 
         this.completedSteps = 0L;
+        this.accumulatedSeconds = 0.0;
     }
 
     /** The fixed numerical step size in seconds. */
@@ -162,6 +164,111 @@ public final class SimulationEngine {
      */
     public StepResult step() {
         return integrateOneStep();
+    }
+
+
+    /**
+     * Advances the simulation by the requested amount of simulated time,
+     * executing whole fixed substeps and carrying any remainder (ADR-006 §3).
+     * <p>
+     * The requested seconds are added to the internal accumulator; while the
+     * accumulator holds at least one full timestep, substeps of exactly
+     * {@link #integrationStepSeconds()} are executed. Only successfully
+     * committed substeps are deducted. The numerical step size never varies:
+     * a larger request produces more substeps of identical size, never a
+     * larger step.
+     * <p>
+     * {@code advanceBy(0.0)} is a valid no-op request: zero simulated time is
+     * legitimate, and accepting it keeps the API closed under ordinary arithmetic.
+     * Under the normal invariant the accumulator rests strictly
+     * below the timestep between calls, so a zero request commits zero steps
+     * and changes nothing.
+     * <p>
+     * <strong>Atomicity is per substep, not per call.</strong> This operation
+     * is deliberately not transactional: ADR-006 §8 defines partial success,
+     * and substeps committed before a failure remain committed.
+     * <p>
+     * <strong>On numerical breakdown</strong>, the accumulator is reset to
+     * zero and all unconsumed requested time is discarded (normative,
+     * ADR-006 §3): the engine rests at the last committed state and clock,
+     * and the result reports how many substeps succeeded and where breakdown
+     * occurred. No further substeps are attempted.
+     * <p>
+     * <strong>On exceptional termination</strong> — any runtime exception
+     * escaping an internal substep — the accumulator is likewise reset to
+     * zero before the exception is rethrown, so a later call cannot
+     * implicitly continue an operation that terminated abnormally. A
+     * structural integrator defect ({@code IllegalStateException}) is one
+     * source; a physics-boundary rejection such as coincident interacting
+     * bodies ({@code IllegalArgumentException} from the gravity layer) is
+     * another. Substeps committed before the exception remain committed.
+     * <p>
+     * The request must be non-negative and finite, and must not cause the
+     * accumulated requested time to overflow to infinity; the check runs
+     * before any mutation, so a rejected request leaves carried time intact.
+     * Two individually finite values can sum to positive infinity, and an
+     * infinite accumulator would make the substep loop non-terminating. A
+     * huge but still finite request is not policed: requesting far more
+     * simulated time than the caller is prepared to wait for is the caller's
+     * responsibility.
+     * <p>
+     * Observer publication for this operation (one event per call, ADR-006
+     * §7) is introduced together with listener dispatch; this method
+     * currently publishes nothing.
+     *
+     * @param simulatedSeconds requested simulated time; non-negative and
+     *                         finite, zero permitted
+     * @return the outcome of the whole operation, always carrying the last
+     *         committed snapshot
+     * @throws IllegalArgumentException if the request is negative, NaN or
+     *                                  infinite, or would overflow the
+     *                                  accumulated requested time
+     * @throws IllegalStateException    if the integrator violates its
+     *                                  structural return contract
+     */
+    public AdvanceResult advanceBy(double simulatedSeconds) {
+        if (simulatedSeconds < 0.0 || !Double.isFinite(simulatedSeconds)) {
+            throw new IllegalArgumentException(
+                    "simulatedSeconds must be non-negative and finite, was: "
+                            + simulatedSeconds);
+        }
+
+        // Checked before assignment so a rejected request cannot corrupt existing carried time. Two individually finite values can sum to
+        // positive infinity; allowing an infinite accumulator would make the substep loop non-terminating.
+        double updatedAccumulator = accumulatedSeconds + simulatedSeconds;
+        if (!Double.isFinite(updatedAccumulator)) {
+            throw new IllegalArgumentException(
+                    "simulatedSeconds causes the accumulated requested time to overflow: "
+                            + accumulatedSeconds + " + " + simulatedSeconds);
+        }
+        accumulatedSeconds = updatedAccumulator;
+
+        long stepsCommitted = 0L;
+
+        try {
+            while (accumulatedSeconds >= integrationStepSeconds) {
+                switch (integrateOneStep()) {
+                    case StepResult.Advanced advanced -> {
+                        accumulatedSeconds -= integrationStepSeconds;
+                        stepsCommitted++;
+                    }
+                    case StepResult.NumericalBreakdown breakdown -> {
+                        // Normative reset (ADR-006 §3): committed substeps
+                        // stand, unconsumed time is discarded, nothing
+                        // further is attempted
+                        accumulatedSeconds = 0.0;
+                        return new AdvanceResult(snapshot(), stepsCommitted, 0.0, breakdown);
+                    }
+                }
+            }
+        } catch (RuntimeException failure) {
+            // Exceptional termination: committed substeps stand, but carried time is discarded so no later call implicitly continues an
+            // abnormally terminated operation
+            accumulatedSeconds = 0.0;
+            throw failure;
+        }
+
+        return new AdvanceResult(snapshot(), stepsCommitted, accumulatedSeconds, null);
     }
 
     /**

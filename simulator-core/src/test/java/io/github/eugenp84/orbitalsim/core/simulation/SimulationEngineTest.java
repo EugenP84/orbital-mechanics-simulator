@@ -22,7 +22,7 @@ class SimulationEngineTest {
 
     private static final double DT = 60.0;
 
-    // --------------========= Test fixtures ----------------------------------
+    // ---================= Test fixtures ============================---
 
     private static CelestialBody star() {
         return new CelestialBody(
@@ -56,8 +56,9 @@ class SimulationEngineTest {
     }
 
     /**
-     * A deterministic stub: shifts every body's position by a fixed offset per step and leaves velocity unchanged.
-     * Distinguishable outputs allow strategy-switch verification without numerical machinery.
+     * A deterministic stub: shifts every body's position by a fixed offset
+     * per step and leaves velocity unchanged. Distinguishable outputs allow
+     * strategy-switch verification without numerical machinery.
      */
     private static Integrator shiftingIntegrator(Vector3D offsetPerStep) {
         return (states, dt, model) -> {
@@ -85,11 +86,32 @@ class SimulationEngineTest {
         };
     }
 
+    /** Succeeds for the first {@code successes} calls, then breaks down. */
+    private static Integrator breakingAfter(int successes) {
+        return new Integrator() {
+            private int calls = 0;
+
+            @Override
+            public StateVector[] step(StateVector[] states, double dt, AccelerationModel model) {
+                calls++;
+                StateVector[] next = new StateVector[states.length];
+                for (int i = 0; i < states.length; i++) {
+                    next[i] = (calls > successes && i == 0)
+                            ? new StateVector(new Vector3D(Double.NaN, 0, 0), Vector3D.ZERO)
+                            : new StateVector(
+                            states[i].position().add(new Vector3D(1, 0, 0)),
+                            states[i].velocity());
+                }
+                return next;
+            }
+        };
+    }
+
     private static SimulationEngine engineWith(Integrator integrator) {
         return new SimulationEngine(twoBodies(), unusedModel(), DT, integrator);
     }
 
-    // ------------------ Construction contract ----
+    // --- ================Construction contract -==============================--
 
     @Test
     void constructorRejectsInvalidArguments() {
@@ -119,7 +141,8 @@ class SimulationEngineTest {
 
     @Test
     void constructorRejectsNullBodyElement() {
-        // Built with ArrayList deliberately: List.of would itself reject the null during fixture construction, testing the JDK rather than the
+        // Built with ArrayList deliberately: List.of would itself reject the
+        // null during fixture construction, testing the JDK rather than the
         // engine's documented contract (implemented via List.copyOf)
         List<BodySnapshot> bodies = new ArrayList<>(twoBodies());
         bodies.set(1, null);
@@ -139,7 +162,7 @@ class SimulationEngineTest {
         assertEquals(2, engine.snapshot().bodies().size());
     }
 
-    // -----------------===- Initial state =============---
+    // ---========== Initial state ==============================---
 
     @Test
     void initialSnapshotIsAtTimeZeroWithZeroSteps() {
@@ -154,7 +177,7 @@ class SimulationEngineTest {
         assertEquals("planet-1", snapshot.bodies().get(1).definition().id());
     }
 
-    // ---================ Successful step path ===================================---
+    // ---========================== Successful step path ============================---
 
     @Test
     void successfulStepCommitsAllStatesAndAdvancesTheClockOnce() {
@@ -200,7 +223,7 @@ class SimulationEngineTest {
         assertEquals(((StepResult.Advanced) result).snapshot(), engine.snapshot());
     }
 
-    // ---------------------- Numerical breakdown path -------------------------------
+    // ------------- Numerical breakdown path ------------------------------
 
     @Test
     void nonFiniteCandidateYieldsNumericalBreakdown() {
@@ -265,7 +288,7 @@ class SimulationEngineTest {
         assertEquals(0, breakdown.firstNonFiniteBodyIndex());
     }
 
-    // ---================ Malformed integrator (collaborator defect, not breakdown) ===---
+    // ---------- Malformed integrator (collaborator defect, not breakdown) ----------------------
 
     @Test
     void nullCandidateArrayIsACollaboratorDefectAndCommitsNothing() {
@@ -290,7 +313,8 @@ class SimulationEngineTest {
         assertThrows(IllegalStateException.class, shortEngine::step);
         assertEquals(beforeShort, shortEngine.snapshot());
 
-        // A LONGER array must also be rejected: silently committing the first N states would ignore candidate states without any error
+        // A LONGER array must also be rejected: silently committing the first
+        // N states would ignore candidate states without any error
         SimulationEngine longEngine = engineWith((states, dt, model) -> {
             StateVector[] tooMany = new StateVector[states.length + 1];
             Arrays.fill(tooMany, new StateVector(Vector3D.ZERO, Vector3D.ZERO));
@@ -320,13 +344,14 @@ class SimulationEngineTest {
     void collaboratorDefectIsNeverReportedAsNumericalBreakdown() {
         SimulationEngine engine = engineWith((states, dt, model) -> null);
 
-        // The defect surfaces as an exception, not as a StepResult variant — the taxonomy of ADR-005 §4 applied at the engine boundary
+        // The defect surfaces as an exception, not as a StepResult variant —
+        // the taxonomy of ADR-005 §4 applied at the engine boundary
         IllegalStateException thrown =
                 assertThrows(IllegalStateException.class, engine::step);
         assertTrue(thrown.getMessage().contains("Integrator"));
     }
 
-    // --- Integrator strategy switching ---
+    // ---====================== Integrator strategy switching =======================---
 
     @Test
     void selectIntegratorChangesStrategyWithoutChangingState() {
@@ -358,7 +383,7 @@ class SimulationEngineTest {
         assertThrows(NullPointerException.class, () -> engine.selectIntegrator(null));
     }
 
-    // --======================- Snapshot isolation =======================================---
+    // ------------------------- Snapshot isolation --------------------------------------
 
     @Test
     void snapshotCannotBeUsedToMutateEngineState() {
@@ -374,7 +399,216 @@ class SimulationEngineTest {
         assertEquals(2, engine.snapshot().bodies().size());
     }
 
-    // --------------- Composition with the real numerical stack -------------------------
+    // --- advanceBy: accumulator and substep orchestration ---
+
+    @Test
+    void requestSmallerThanTimestepCarriesWithoutStepping() {
+        SimulationEngine engine = engineWith(shiftingIntegrator(new Vector3D(1, 0, 0)));
+
+        AdvanceResult result = engine.advanceBy(40.0);
+
+        assertEquals(0L, result.stepsCommitted());
+        assertEquals(40.0, result.carriedSeconds());
+        assertNull(result.breakdown());
+        assertEquals(0L, result.snapshot().completedSteps());
+        assertEquals(engine.snapshot(), result.snapshot());
+    }
+
+    @Test
+    void successiveRequestsCombineRemainders() {
+        // The worked example from the ADR-006 review: dt = 60,
+        // advanceBy(155) -> 2 steps carry 35; advanceBy(40) -> 75 -> 1 step carry 15
+        SimulationEngine engine = engineWith(shiftingIntegrator(new Vector3D(1, 0, 0)));
+
+        AdvanceResult first = engine.advanceBy(155.0);
+        assertEquals(2L, first.stepsCommitted());
+        assertEquals(35.0, first.carriedSeconds());
+
+        AdvanceResult second = engine.advanceBy(40.0);
+        assertEquals(1L, second.stepsCommitted());
+        assertEquals(15.0, second.carriedSeconds());
+
+        assertEquals(3L, second.snapshot().completedSteps());
+        assertEquals(3 * DT, second.snapshot().simulationTimeSeconds());
+    }
+
+    @Test
+    void requestEqualToTimestepExecutesExactlyOneStep() {
+        SimulationEngine engine = engineWith(shiftingIntegrator(new Vector3D(1, 0, 0)));
+
+        AdvanceResult result = engine.advanceBy(DT);
+
+        assertEquals(1L, result.stepsCommitted());
+        assertEquals(0.0, result.carriedSeconds());
+        assertEquals(1L, result.snapshot().completedSteps());
+    }
+
+    @Test
+    void requestCoveringSeveralStepsCommitsThemAll() {
+        Vector3D shift = new Vector3D(10, 0, 0);
+        SimulationEngine engine = engineWith(shiftingIntegrator(shift));
+        Vector3D initialPlanetPosition =
+                engine.snapshot().bodies().get(1).state().position();
+
+        AdvanceResult result = engine.advanceBy(200.0);
+
+        assertEquals(3L, result.stepsCommitted());
+        assertEquals(20.0, result.carriedSeconds(), 1e-9);
+        assertNull(result.breakdown());
+        assertEquals(3L, result.snapshot().completedSteps());
+
+        // Three substeps really were applied to state
+        assertEquals(
+                initialPlanetPosition.add(shift.multiply(3.0)),
+                result.snapshot().bodies().get(1).state().position());
+
+        // AdvanceResult engine guarantee: remainder strictly below the step
+        assertTrue(result.carriedSeconds() < engine.integrationStepSeconds());
+    }
+
+    @Test
+    void zeroRequestIsANoOpPreservingRemainder() {
+        SimulationEngine engine = engineWith(shiftingIntegrator(new Vector3D(1, 0, 0)));
+        engine.advanceBy(40.0);
+
+        AdvanceResult result = engine.advanceBy(0.0);
+
+        assertEquals(0L, result.stepsCommitted());
+        assertEquals(40.0, result.carriedSeconds());
+        assertEquals(0L, result.snapshot().completedSteps());
+    }
+
+    @Test
+    void invalidRequestsAreRejectedWithoutChangingCarriedTime() {
+        SimulationEngine engine = engineWith(shiftingIntegrator(new Vector3D(1, 0, 0)));
+        engine.advanceBy(40.0);
+
+        assertThrows(IllegalArgumentException.class, () -> engine.advanceBy(-1.0));
+        assertThrows(IllegalArgumentException.class, () -> engine.advanceBy(Double.NaN));
+        assertThrows(IllegalArgumentException.class,
+                () -> engine.advanceBy(Double.POSITIVE_INFINITY));
+
+        // Carried time survived the rejections: 40 + 20 = 60 -> exactly one step
+        AdvanceResult after = engine.advanceBy(20.0);
+        assertEquals(1L, after.stepsCommitted());
+        assertEquals(0.0, after.carriedSeconds());
+    }
+
+    @Test
+    void overflowingRequestIsRejectedBeforeMutatingTheAccumulator() {
+        // Two finite values can sum to positive infinity. These deliberately
+        // extreme operands create a finite-plus-finite overflow so the guard
+        // can be exercised; an infinite accumulator would otherwise make the
+        // substep loop non-terminating. The huge timestep only lets the first
+        // request be carried rather than stepped, keeping the state stable
+        // for the overflow attempt.
+        double hugeDt = 1.0e308;
+        SimulationEngine engine = new SimulationEngine(
+                twoBodies(), unusedModel(), hugeDt,
+                shiftingIntegrator(new Vector3D(1, 0, 0)));
+
+        engine.advanceBy(9.0e307);   // below dt: carried, no steps
+
+        assertThrows(IllegalArgumentException.class,
+                () -> engine.advanceBy(Double.MAX_VALUE));
+
+        // Check-before-mutate: the carried time is intact
+        assertEquals(9.0e307, engine.advanceBy(0.0).carriedSeconds());
+    }
+
+    @Test
+    void breakdownWithNoSuccessfulSubstepsResetsTheAccumulator() {
+        SimulationEngine engine = engineWith(breakdownIntegrator(0));
+        SimulationSnapshot before = engine.snapshot();
+
+        AdvanceResult result = engine.advanceBy(200.0);
+
+        assertEquals(0L, result.stepsCommitted());
+        assertEquals(0.0, result.carriedSeconds());
+        assertNotNull(result.breakdown());
+        assertTrue(result.brokeDown());
+        assertEquals(before, result.snapshot(), "nothing was committed");
+
+        // The reset is real: a fresh sub-threshold request carries only
+        // itself, not remnants of the failed 200-second request
+        engine.selectIntegrator(shiftingIntegrator(new Vector3D(1, 0, 0)));
+        AdvanceResult next = engine.advanceBy(40.0);
+        assertEquals(0L, next.stepsCommitted());
+        assertEquals(40.0, next.carriedSeconds());
+    }
+
+    @Test
+    void breakdownAfterSuccessfulSubstepsRetainsThePrefix() {
+        SimulationEngine engine = engineWith(breakingAfter(2));
+
+        AdvanceResult result = engine.advanceBy(200.0);
+
+        assertEquals(2L, result.stepsCommitted(), "this-call scope");
+        assertEquals(2L, result.snapshot().completedSteps(), "whole-run scope");
+        assertEquals(0.0, result.carriedSeconds());
+        assertNotNull(result.breakdown());
+        assertEquals(3 * DT, result.breakdown().attemptedTimeSeconds());
+        assertEquals(2 * DT, result.snapshot().simulationTimeSeconds(),
+                "clock rests at the last committed substep");
+    }
+
+    @Test
+    void exceptionAfterSuccessfulSubstepsResetsAndRethrows() {
+        // Succeeds twice, then violates the structural contract
+        Integrator defectiveAfterTwo = new Integrator() {
+            private int calls = 0;
+
+            @Override
+            public StateVector[] step(StateVector[] states, double dt, AccelerationModel model) {
+                if (++calls > 2) {
+                    return null;
+                }
+                StateVector[] next = new StateVector[states.length];
+                for (int i = 0; i < states.length; i++) {
+                    next[i] = new StateVector(
+                            states[i].position().add(new Vector3D(1, 0, 0)),
+                            states[i].velocity());
+                }
+                return next;
+            }
+        };
+        SimulationEngine engine = engineWith(defectiveAfterTwo);
+
+        assertThrows(IllegalStateException.class, () -> engine.advanceBy(200.0));
+
+        assertEquals(2L, engine.snapshot().completedSteps(),
+                "substeps committed before the exception remain committed");
+
+        // Accumulator was reset on exceptional termination
+        engine.selectIntegrator(shiftingIntegrator(new Vector3D(1, 0, 0)));
+        AdvanceResult next = engine.advanceBy(40.0);
+        assertEquals(0L, next.stepsCommitted());
+        assertEquals(40.0, next.carriedSeconds());
+    }
+
+    @Test
+    void everyInternalSubstepReceivesExactlyTheFixedTimestep() {
+        // The central ADR-005 §8 / ADR-006 §3 property: a presentation-scale
+        // request never changes the numerical step size, only the substep count
+        List<Double> observedTimesteps = new ArrayList<>();
+
+        Integrator recording = (states, dt, model) -> {
+            observedTimesteps.add(dt);
+            StateVector[] next = new StateVector[states.length];
+            System.arraycopy(states, 0, next, 0, states.length);
+            return next;
+        };
+        SimulationEngine engine = engineWith(recording);
+
+        engine.advanceBy(200.0);
+
+        assertEquals(3, observedTimesteps.size());
+        for (double dt : observedTimesteps) {
+            assertEquals(DT, dt, "every substep must use exactly the fixed timestep");
+        }
+    }
+
+    // ---========== Composition with the real numerical stack -=================--
 
     @Test
     void composesWithRealIntegratorAndAccelerationModel() {
