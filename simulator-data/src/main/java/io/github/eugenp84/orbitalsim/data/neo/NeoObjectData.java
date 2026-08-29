@@ -6,24 +6,18 @@ import java.util.Objects;
 /**
  * A near-Earth object in provider-neutral form (ADR-007 §3).
  * <p>
- * This type is owned by {@code simulator-data} and named in the simulation's
- * own terms. It deliberately does not mirror any external provider's schema:
+ * This type is owned by {@code simulator-data} and named in the simulation's own terms.
+ * It deliberately does not mirror any external provider's schema:
  * an adapter normalises its source representation into this shape, so that a
- * change to an external JSON schema is absorbed at the adapter boundary and
- * never reaches the rest of the application.
+ * change to an external JSON schema is absorbed at the adapter boundary and never reaches the rest of the application.
  * <p>
  * It carries only what downstream consumers need: a stable identity and
- * display name, a representative diameter from which a body radius can be
- * derived, the planetary-defence hazard flag, and the object's close-approach
- * events. It does <strong>not</strong> carry Keplerian orbital elements: the
- * close-approach feed does not provide them, and constructing a simulation
- * state from this data is the responsibility of a separate conversion step
- * (ADR-008), not of this acquisition-layer type.
+ * display name, a representative diameter from which a body radius can be derived, the planetary-defence hazard flag, and the object's close-approach events.
+ * It does <strong>not</strong> carry Keplerian orbital elements: the close-approach feed does not provide them, and constructing a simulation
+ * state from this data is the responsibility of a separate conversion step (ADR-008), not of this acquisition-layer type.
  * <p>
- * The diameter is represented as a min/max estimate because that is the form
- * in which such estimates are known — a single figure would imply a precision
- * the underlying observation does not have. A consumer needing one value can
- * take the midpoint, but the honest range is preserved here.
+ * The diameter is represented as a min/max estimate because that is the form in which such estimates are known — a single figure would imply a precision
+ * the underlying observation does not have. A consumer needing one value can take the midpoint, but the honest range is preserved here.
  *
  * @param id                    stable provider identifier; never null or blank
  * @param name                  human-readable designation; never null or blank
@@ -42,7 +36,8 @@ public record NeoObjectData(
         double estimatedDiameterMinMetres,
         double estimatedDiameterMaxMetres,
         boolean potentiallyHazardous,
-        List<CloseApproach> closeApproaches) {
+        List<CloseApproach> closeApproaches)
+{
 
     public NeoObjectData {
         Objects.requireNonNull(id, "id must not be null");
@@ -82,7 +77,8 @@ public record NeoObjectData(
      * to infinity. Since {@code max >= min >= 0}, the difference cannot exceed
      * {@code max}, so the result stays finite and within {@code [min, max]}.
      */
-    public double estimatedDiameterMidpointMetres() {
+    public double estimatedDiameterMidpointMetres()
+    {
         return estimatedDiameterMinMetres
                 + 0.5 * (estimatedDiameterMaxMetres - estimatedDiameterMinMetres);
     }

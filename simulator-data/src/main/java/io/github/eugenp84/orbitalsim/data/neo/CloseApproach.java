@@ -8,16 +8,10 @@ import java.util.Objects;
  * expressed in provider-neutral terms and SI units.
  * <p>
  * This is a normalised representation (ADR-007 §3): it names quantities in the
- * simulation's own terms and carries only what the simulation needs, rather
- * than mirroring any external provider's field names or unit conventions. A
- * provider adapter is responsible for converting its source representation —
- * for example NeoWs's kilometre and km/s fields and Unix-epoch timestamps —
- * into this form.
+ * simulation's own terms and carries only what the simulation needs, rather than mirroring any external provider's field names or unit conventions.
+ * A provider adapter is responsible for converting its source representation — for example NeoWs's kilometre and km/s fields and Unix-epoch timestamps — into this form.
  * <p>
- * Each value is meaningful at {@code epoch}: the miss distance and relative
- * velocity describe the geometry at the instant of closest approach, not at
- * any orbital-element epoch. Keeping the epoch attached to the event is
- * essential for the CNEOS validation of Objective 6, which must compare
+ * Each value is meaningful at {@code epoch}: the miss distance and relative velocity describe the geometry at the instant of closest approach, not at any orbital-element epoch. Keeping the epoch attached to the event is essential for the CNEOS validation of Objective 6, which must compare
  * simulated and published quantities at the same instant.
  *
  * @param epoch                     the instant of closest approach
@@ -36,7 +30,8 @@ public record CloseApproach(
         double relativeVelocityMetresPerSecond,
         String orbitingBody) {
 
-    public CloseApproach {
+    public CloseApproach
+    {
         Objects.requireNonNull(epoch, "epoch must not be null");
         Objects.requireNonNull(orbitingBody, "orbitingBody must not be null");
 

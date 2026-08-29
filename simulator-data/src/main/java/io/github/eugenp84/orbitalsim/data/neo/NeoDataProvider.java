@@ -17,17 +17,16 @@ import java.time.LocalDate;
  * interface behind which alternative implementations — including the offline
  * fallback — are interchangeable.
  */
-public interface NeoDataProvider {
+public interface NeoDataProvider
+{
 
     /**
      * Retrieves NEO close-approach data for the inclusive date range
      * {@code [startDate, endDate]}.
      * <p>
-     * The result's {@link DataSource} records whether the data was obtained
-     * live or served from cache. A provider may fall back to cached data on a
-     * defined external acquisition failure, but only when the cached dataset
-     * covers the requested range (ADR-007 §5, §7); it must not present cached
-     * data for a range it does not cover, and must not mask an internal defect
+     * The result's {@link DataSource} records whether the data was obtained live or served from cache.
+     * A provider may fall back to cached data on a defined external acquisition failure, but only when the cached dataset
+     * covers the requested range (ADR-007 §5, §7); it must not present cached data for a range it does not cover, and must not mask an internal defect
      * or a configuration failure as a cache fallback.
      *
      * @param startDate first day of the range, inclusive; never null
