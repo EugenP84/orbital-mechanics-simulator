@@ -9,6 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.function.Consumer;
+
 /**
  * Owner of committed simulation state (ADR-006).
  * <p>
@@ -74,6 +78,23 @@ public final class SimulationEngine {
     private long completedSteps;
     private double accumulatedSeconds;
 
+    private final Set<SimulationListener> listeners = new LinkedHashSet<>();
+    private final ListenerErrorHandler listenerErrorHandler;
+
+    /**
+     * Constructs an engine with a default listener-error handler that reports
+     * to {@code System.err}. Equivalent to the five-argument constructor with
+     * a default handler; existing callers need not supply one.
+     */
+    public SimulationEngine(
+            List<BodySnapshot> initialBodies,
+            AccelerationModel accelerationModel,
+            double integrationStepSeconds,
+            Integrator integrator) {
+        this(initialBodies, accelerationModel, integrationStepSeconds, integrator,
+                defaultListenerErrorHandler());
+    }
+
     /**
      * @param initialBodies          definition–state pairs for every body, in
      *                               the body order all snapshots will use;
@@ -83,6 +104,8 @@ public final class SimulationEngine {
      * @param integrationStepSeconds the fixed numerical step size; positive
      *                               and finite (ADR-005 §7)
      * @param integrator             the initially selected strategy
+     * @param listenerErrorHandler   receives isolated listener failures
+     *                               (ADR-006 §9)
      * @throws NullPointerException     if any argument or list element is null
      * @throws IllegalArgumentException if the body list is empty or the
      *                                  timestep is not positive and finite
@@ -91,12 +114,16 @@ public final class SimulationEngine {
             List<BodySnapshot> initialBodies,
             AccelerationModel accelerationModel,
             double integrationStepSeconds,
-            Integrator integrator) {
+            Integrator integrator,
+            ListenerErrorHandler listenerErrorHandler)
+    {
 
         Objects.requireNonNull(initialBodies, "initialBodies must not be null");
         this.accelerationModel =
                 Objects.requireNonNull(accelerationModel, "accelerationModel must not be null");
         this.integrator = Objects.requireNonNull(integrator, "integrator must not be null");
+        this.listenerErrorHandler =
+                Objects.requireNonNull(listenerErrorHandler, "listenerErrorHandler must not be null");
 
         if (initialBodies.isEmpty()) {
             throw new IllegalArgumentException("at least one body is required");
@@ -108,9 +135,6 @@ public final class SimulationEngine {
         }
         this.integrationStepSeconds = integrationStepSeconds;
 
-        // List.copyOf rejects null elements; BodySnapshot enforces non-null
-        // components. Engine-private SimulationBody aggregates are built from
-        // the pairs (ADR-006 §4) — never from parallel collections.
         List<BodySnapshot> pairs = List.copyOf(initialBodies);
         this.bodies = new ArrayList<>(pairs.size());
         for (BodySnapshot pair : pairs) {
@@ -120,6 +144,14 @@ public final class SimulationEngine {
         this.completedSteps = 0L;
         this.accumulatedSeconds = 0.0;
     }
+
+    private static ListenerErrorHandler defaultListenerErrorHandler() {
+        return (listener, failure) -> {
+            System.err.println("SimulationListener threw: " + failure);
+            failure.printStackTrace();
+        };
+    }
+
 
     /** The fixed numerical step size in seconds. */
     public double integrationStepSeconds() {
@@ -145,8 +177,87 @@ public final class SimulationEngine {
      *
      * @throws NullPointerException if the integrator is null
      */
-    public void selectIntegrator(Integrator integrator) {
+    public void selectIntegrator(Integrator integrator)
+    {
         this.integrator = Objects.requireNonNull(integrator, "integrator must not be null");
+    }
+
+    /**
+     * Registers a listener to receive snapshot and breakdown notifications.
+     * Registration is idempotent: adding the same listener twice does not
+     * produce duplicate notifications. Registration changes made during a
+     * notification take effect from the next notification.
+     *
+     * @throws NullPointerException if the listener is null
+     */
+    public void addListener(SimulationListener listener) {
+        Objects.requireNonNull(listener, "listener must not be null");
+        listeners.add(listener);
+    }
+
+    /**
+     * Removes a previously registered listener. Listener arguments must be
+     * non-null throughout this API, so a null argument is rejected rather
+     * than silently ignored.
+     *
+     * @return true if the listener was registered and has been removed
+     * @throws NullPointerException if the listener is null
+     */
+    public boolean removeListener(SimulationListener listener) {
+        Objects.requireNonNull(listener, "listener must not be null");
+        return listeners.remove(listener);
+    }
+
+    private void publishSnapshot(SimulationSnapshot snapshot) {
+        dispatch(listener -> listener.onSnapshot(snapshot));
+    }
+
+    private void publishBreakdown(
+            StepResult.NumericalBreakdown breakdown, SimulationSnapshot lastCommitted) {
+        dispatch(listener -> listener.onNumericalBreakdown(breakdown, lastCommitted));
+    }
+
+    /**
+     * Invokes a notification on every registered listener, isolating each.
+     * A {@code RuntimeException} from one listener is reported to the error
+     * handler and does not prevent the remaining listeners from being
+     * notified, disturb the committed step, or reach the caller;
+     * {@code AssertionError} and serious JVM errors are not caught
+     * (ADR-006 §9).
+     * <p>
+     * Dispatch iterates a copy of the registration set. This is an
+     * implementation decision, not a requirement of ADR-006: it makes
+     * re-entrant registration safe, so a listener that adds or removes
+     * listeners during its own callback does not disturb the dispatch in
+     * progress. Such changes take effect from the next notification.
+     */
+    private void dispatch(Consumer<SimulationListener> notification)
+    {
+        for (SimulationListener listener : List.copyOf(listeners)) {
+            try {
+                notification.accept(listener);
+            } catch (RuntimeException failure) {
+                reportListenerFailure(listener, failure);
+            }
+        }
+    }
+
+    /**
+     * Reports a listener failure through the error handler. If the handler
+     * itself throws, a non-recursive best-effort fallback is written to
+     * {@code System.err} naming both the original listener failure and the
+     * handler's own failure — the listener failure is never routed back
+     * through the handler mechanism. Serious JVM errors are not caught here.
+     */
+    private void reportListenerFailure(SimulationListener listener, RuntimeException failure) {
+        try {
+            listenerErrorHandler.onListenerError(listener, failure);
+        } catch (RuntimeException handlerFailure) {
+            System.err.println(
+                    "ListenerErrorHandler threw while reporting listener failure. "
+                            + "Original failure: " + failure
+                            + "; handler failure: " + handlerFailure);
+        }
     }
 
     /**
@@ -162,8 +273,17 @@ public final class SimulationEngine {
      * @throws IllegalStateException if the integrator violates its structural
      *         return contract; nothing is committed in that case either
      */
-    public StepResult step() {
-        return integrateOneStep();
+    public StepResult step()
+    {
+        StepResult result = integrateOneStep();
+
+        switch (result) {
+            case StepResult.Advanced advanced -> publishSnapshot(advanced.snapshot());
+            case StepResult.NumericalBreakdown breakdown ->
+                    publishBreakdown(breakdown, snapshot());
+        }
+
+        return result;
     }
 
 
@@ -226,50 +346,72 @@ public final class SimulationEngine {
      * @throws IllegalStateException    if the integrator violates its
      *                                  structural return contract
      */
-    public AdvanceResult advanceBy(double simulatedSeconds) {
-        if (simulatedSeconds < 0.0 || !Double.isFinite(simulatedSeconds)) {
+    public AdvanceResult advanceBy(double simulatedSeconds)
+    {
+        if (simulatedSeconds < 0.0 || !Double.isFinite(simulatedSeconds))
+        {
             throw new IllegalArgumentException(
                     "simulatedSeconds must be non-negative and finite, was: "
                             + simulatedSeconds);
         }
 
-        // Checked before assignment so a rejected request cannot corrupt existing carried time. Two individually finite values can sum to
-        // positive infinity; allowing an infinite accumulator would make the substep loop non-terminating.
+        // Checked before assignment so a rejected request cannot corrupt existing carried time.
+        // Two individually finite values can sum to positive infinity, allowing an infinite accumulator would make the substep loop non-terminating.
         double updatedAccumulator = accumulatedSeconds + simulatedSeconds;
-        if (!Double.isFinite(updatedAccumulator)) {
+        if (!Double.isFinite(updatedAccumulator))
+        {
             throw new IllegalArgumentException(
                     "simulatedSeconds causes the accumulated requested time to overflow: "
                             + accumulatedSeconds + " + " + simulatedSeconds);
-        }
+        }// end if
         accumulatedSeconds = updatedAccumulator;
 
         long stepsCommitted = 0L;
 
         try {
-            while (accumulatedSeconds >= integrationStepSeconds) {
-                switch (integrateOneStep()) {
+            while (accumulatedSeconds >= integrationStepSeconds)
+            {
+                switch (integrateOneStep())
+                {
                     case StepResult.Advanced advanced -> {
                         accumulatedSeconds -= integrationStepSeconds;
                         stepsCommitted++;
                     }
                     case StepResult.NumericalBreakdown breakdown -> {
-                        // Normative reset (ADR-006 §3): committed substeps
-                        // stand, unconsumed time is discarded, nothing
-                        // further is attempted
+                        // Normative reset (ADR-006 §3): committed substeps stand, unconsumed time is discarded, nothing further is attempted
                         accumulatedSeconds = 0.0;
-                        return new AdvanceResult(snapshot(), stepsCommitted, 0.0, breakdown);
+
+                        // Publication (ADR-006 §7): one shared snapshot for both the observers and the returned result.
+                        // If any substep committed, publish the final snapshot first, then the breakdown — in that order.
+                        SimulationSnapshot finalSnapshot = snapshot();
+                        if (stepsCommitted > 0)
+                        {
+                            publishSnapshot(finalSnapshot);
+                        }
+                        publishBreakdown(breakdown, finalSnapshot);
+
+                        return new AdvanceResult(finalSnapshot, stepsCommitted, 0.0, breakdown);
                     }
                 }
             }
-        } catch (RuntimeException failure) {
-            // Exceptional termination: committed substeps stand, but carried time is discarded so no later call implicitly continues an
-            // abnormally terminated operation
+        }
+        catch (RuntimeException failure)
+        {
+            // Exceptional termination: committed substeps stand, but carried time is discarded so no later call implicitly continues an abnormally terminated operation.
+            // No publication occurs on this path — the operation did not complete normally.
             accumulatedSeconds = 0.0;
             throw failure;
         }
 
-        return new AdvanceResult(snapshot(), stepsCommitted, accumulatedSeconds, null);
-    }
+        // Normal completion. Publish one snapshot only if at least one substep committed; a zero-step call publishes nothing (ADR-006 §7).
+        // The same snapshot instance is returned to the caller and sent to observers.
+        SimulationSnapshot finalSnapshot = snapshot();
+        if (stepsCommitted > 0)
+        {
+            publishSnapshot(finalSnapshot);
+        }
+        return new AdvanceResult(finalSnapshot, stepsCommitted, accumulatedSeconds, null);
+    } // --- end of advanceBy() --------------------------------------------------------------------------------------------
 
     /**
      * The single-step primitive that {@code step()} — and, in a later
@@ -294,10 +436,9 @@ public final class SimulationEngine {
             return new StepResult.NumericalBreakdown(attemptedTime, invalidBodyIndex);
         }
 
-        // Atomic commit: all states, then the counter. No failure point
-        // exists here — structure and finiteness were validated above, and
-        // updateState performs no further checks that could throw for a
-        // validated candidate
+        // Atomic commit: all states, then the counter.
+        // No failure point exists here — structure and finiteness were validated above, and
+        // updateState performs no further checks that could throw for a validated candidate
         for (int i = 0; i < bodies.size(); i++) {
             bodies.get(i).updateState(candidate[i]);
         }
