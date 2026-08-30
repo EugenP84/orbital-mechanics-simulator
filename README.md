@@ -25,11 +25,11 @@ accuracy, energy behaviour and computational cost.
 
 ## Modules
 
-| Module | Responsibility | Status |
-|---|---|---|
-| `simulator-core` | Domain model, gravitational physics, numerical integrators, simulation engine | Complete |
-| `simulator-data` | NASA NeoWs integration, offline cache, JSON persistence | In progress |
-| `simulator-learning` | Progressive learning scenarios and adaptive hint system | Not started |
+| Module | Responsibility | Status        |
+|---|---|---------------|
+| `simulator-core` | Domain model, gravitational physics, numerical integrators, simulation engine | Complete      |
+| `simulator-data` | NASA NeoWs integration, offline cache, JSON persistence | Complete      |
+| `simulator-learning` | Progressive learning scenarios and adaptive hint system | Started       |
 | `simulator-app` | JavaFX desktop application | Skeleton only |
 
 The dependency direction is one-way: `simulator-app` → `{simulator-learning,
@@ -56,6 +56,16 @@ packages:
 The numerical methods are validated to their theoretical convergence orders,
 and the physics is checked against known reference values (Earth surface
 gravity, the Sun–Earth gravitational force, circular-orbit closure).
+
+### `simulator-data`
+
+Integration with NASA's NeoWs (Near Earth Object Web Service), built around a trust boundary that keeps the unreliable, externally-owned data representation away from the deterministic core:
+
+- A provider abstraction (NeoDataProvider) behind which live and offline sources are interchangeable.
+- NASA-specific DTOs kept private to the adapter; retrieved JSON is normalised into provider-neutral, SI-unit types before it crosses the module boundary.
+- A bundled offline dataset (a genuine captured NeoWs response) served through the same parser as live data, with explicit provenance (live vs cached) and source-capture timestamps.
+- Cause-based failure classification: transport failures, rate limiting, server errors and malformed external data fall back to the offline dataset, while configuration errors and internal defects surface rather than being masked.
+- An injectable HTTP transport seam, so every response class is tested deterministically offline; a real HttpClient-backed transport performs the actual network I/O.
 
 ## Building and running
 
@@ -101,5 +111,5 @@ position was revised in review:
 
 ## Status
 
-**Phase 3 — Development.** `simulator-core` is complete and tested; work is
+**Phase 3 — Development.** `simulator-core` and `simulator-data` are complete and tested; work is
 underway on `simulator-data` (NASA NeoWs integration with offline fallback).
