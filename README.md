@@ -112,4 +112,4 @@ position was revised in review:
 ## Status
 
 **Phase 3 — Development.** `simulator-core` and `simulator-data` are complete and tested; work is
-underway on `simulator-data` (NASA NeoWs integration with offline fallback).
+underway on `simulator-learning` (progressive scenarios and the adaptive hint system).
