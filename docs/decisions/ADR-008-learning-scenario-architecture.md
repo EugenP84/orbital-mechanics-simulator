@@ -199,7 +199,7 @@ Exact values are scenario-specific and calibrated empirically rather than
 guessed, consistent with the per-scenario speed-range configuration already
 committed to in the proposal.
 
-### 5. Assessed scenarios fix their integrator; switching belongs to comparison mode
+### 5. Assessed scenarios fix their integrator. Switching belongs to comparison mode
 
 Runtime integrator switching (Objective 2) and trajectory-based grading cannot
 be combined naively. Measurement on an **exactly correct** circular orbit
@@ -235,7 +235,7 @@ This also sharpens the educational structure: **L1 teaches orbital mechanics;
 comparison mode teaches numerical methods.** Allowing numerical error to
 determine success in the former would blur the two learning goals.
 
-### 6. L1 success is defined by orbital shape; energy drift is a separate integrity diagnostic
+### 6. L1 success is defined by orbital shape. Energy drift is a separate integrity diagnostic
 
 Energy and semi-major axis are not independent evidence: for a two-body orbit
 `ε = −μ/2a` is bijective, so an energy tolerance and a semi-major-axis
@@ -274,7 +274,7 @@ altitude, and the energy-integrity threshold are to be calibrated empirically
 and documented before final scenario evaluation, rather than appearing in code
 as unexplained constants.
 
-### 7. Instantaneous orbital quantities are a core concern; temporal scenario progress is not
+### 7. Instantaneous orbital quantities are a core concern. Temporal scenario progress is not
 
 The boundary runs between quantities derived from a **single physical state**
 and quantities accumulated across **successive observations**:
@@ -360,14 +360,14 @@ NeoWs → simulator-data → provider-neutral data → app composition
 The astrodynamics transformation remains a core computational concern; the
 learning module must not solve it.
 
-### 9. Adaptive hints are an optional capability, not a mandatory scenario hook
+### 9. Adaptive hints as optional capability
 
 Hint support varies independently of completion semantics: L1 has hints, L3
 deliberately does not (the correct parameter space is not analytically
 characterisable once multiple bodies interact simultaneously), L0 and L2 have
 little use for them, and L4 may.
 
-Hints are therefore an **optional composed capability**, not a method every
+Hints are therefore an optional composed capability, not a method every
 scenario must implement. Were hint support a base-class method, L3 would
 require an artificial implementation stating that it has none.
 
@@ -420,7 +420,7 @@ sufficient — hints do not require per-substep evaluation.
   this module's progress to ADR-009. Accepted: implementing eccentricity inside
   the learning module would violate the boundary this ADR exists to protect.
 - Deferring numerical thresholds means L1 cannot be finally validated until
-  calibration is done. Accepted: an unjustified threshold would be worse than a
+  calibration is done. An unjustified threshold would be worse than a
   deferred one.
 
 ## Guiding Principle
