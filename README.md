@@ -94,8 +94,8 @@ The architecture is recorded as a series of Architecture Decision Records
 (ADRs) in `docs/decisions/`, several of which document where an initial
 position was revised in review:
 
-| ADR | Decision |
-|---|---|
+| ADR     | Decision |
+|---------|---|
 | ADR-001 | Technology stack and multi-module structure |
 | ADR-002 | Celestial body model: definition–state separation |
 | ADR-003 | Newtonian gravity model |
@@ -103,6 +103,7 @@ position was revised in review:
 | ADR-005 | Snapshot-based numerical integration contract |
 | ADR-006 | Simulation engine execution model |
 | ADR-007 | External NEO data acquisition and trust boundary |
+| ADR-008 | Learning Scenario Architecture and Evaluation Cadence |
 
 ## Documentation
 
@@ -112,4 +113,4 @@ position was revised in review:
 ## Status
 
 **Phase 3 — Development.** `simulator-core` and `simulator-data` are complete and tested; work is
-underway on `simulator-learning` (progressive scenarios and the adaptive hint system).
+underway on `simulator-learning` (progressive scenarios and the adaptive hint system) - Session/cadence skeleton complete; scenarios pending.
