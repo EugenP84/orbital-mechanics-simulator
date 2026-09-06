@@ -1,8 +1,7 @@
 package io.github.eugenp84.orbitalsim.core.math;
 
 /**
- * An immutable three-dimensional vector used for positions, velocities,
- * accelerations and forces throughout the simulation.
+ * An immutable three-dimensional vector used for positions, velocities, accelerations and forces throughout the simulation.
  * <p>
  * All operations return new instances; no method mutates state.
  *
@@ -38,16 +37,16 @@ public record Vector3D(double x, double y, double z) {
      *
      * @throws ArithmeticException if this is the zero vector.
      * An exact zero comparison is used rather than a tolerance:
-     * any nonzero magnitude yields a valid normalization in IEEE 754 arithmetic,
-     * and a tolerance threshold would be arbitrary at astronomical scale.
+     * any nonzero magnitude yields a valid normalization in IEEE 754 arithmetic, and a tolerance threshold would be arbitrary at astronomical scale.
      */
-    public Vector3D normalize() {
+    public Vector3D normalize()
+    {
         double vectorMagnitude = magnitude();
         if (vectorMagnitude == 0.0) {
             throw new ArithmeticException("Cannot normalize the zero vector");
         }
         return multiply(1.0 / vectorMagnitude);
-    }
+    }// end of normalize()-----------------------------------------------------------
 
     public double dot(Vector3D other) {
         return x * other.x + y * other.y + z * other.z;

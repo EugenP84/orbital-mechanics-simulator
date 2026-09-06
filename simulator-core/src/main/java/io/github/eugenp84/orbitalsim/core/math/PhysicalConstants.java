@@ -2,19 +2,15 @@ package io.github.eugenp84.orbitalsim.core.math;
 
 /**
  * Physical and astronomical constants used throughout the simulation.
- * <p>
- * All values are expressed in canonical SI units (metres, kilograms,
- * seconds). Every quantity entering the simulation core is expected to
- * be converted to these units at the system boundary (factory or data
- * layer); no other unit system appears inside simulator-core.
- * <p>
- * Values follow CODATA and IAU recommendations as published in
- * standard astrodynamics references (Bate, Mueller and White, 1971;
- * Curtis, 2024).
+ * All values are expressed in canonical SI units (metres, kilograms, seconds).
+ * Every quantity entering the simulation core is expected to be converted to these units at the system boundary (factory or data layer);
+ * no other unit system appears inside simulator-core.
+ * Values follow CODATA and IAU recommendations.
  *
  * @author Eugeniu PLATITA
  */
-public final class PhysicalConstants {
+public final class PhysicalConstants
+{
 
     /** Gravitational constant G, in m³ kg⁻¹ s⁻². */
     public static final double GRAVITATIONAL_CONSTANT = 6.674_30e-11;
@@ -35,6 +31,6 @@ public final class PhysicalConstants {
     public static final double SOLAR_RADIUS = 6.957e8;
 
     private PhysicalConstants() {
-        // Static constants holder — not instantiable
+        // Static constants holder — not instantiable !!! --------
     }
 }
