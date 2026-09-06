@@ -13,5 +13,11 @@ public enum ScenarioEvaluation
     COMPLETE,
 
     /** The scenario's failure condition is satisfied. */
-    FAIL
+    FAIL,
+
+    /**
+     * The policy cannot produce a trustworthy assessment from the current run. e.g. excessive numerical energy drift or another policy-detectable integrity condition.
+     * This is not a learner failure!!!
+     */
+    ASSESSMENT_INVALID
 }

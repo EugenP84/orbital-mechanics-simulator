@@ -3,7 +3,6 @@ package io.github.eugenp84.orbitalsim.learning.scenario;
 import io.github.eugenp84.orbitalsim.core.simulation.AdvanceResult;
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationEngine;
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
-
 import java.util.Objects;
 import java.util.Optional;
 
@@ -40,23 +39,22 @@ import java.util.Optional;
  * <p>
  * A completion policy returning null violates its contract; this is a programming defect and propagates as {@link NullPointerException} rather than being classified as a scenario failure.
  *
- * <p>This class is not thread-safe; it is driven from a single thread.
+ * <p>This class is not thread-safe; it is driven from a single thread!!!
+ *
+ * @author Eugeniu PLATITA
  */
-public final class ScenarioSession {
+public final class ScenarioSession
+{
 
     /**
      * Tolerance, in units in the last place of the observation interval, when testing whether the accumulator holds a complete interval.
      * <p>
-     * Repeated addition and subtraction of second-valued quantities leaves the
-     * accumulator fractionally below a mathematically complete interval, which
-     * without tolerance strands the interval until a later request — measured,
-     * for example, at {@code dt = 0.1 s} with {@code k = 7}, where one
-     * observation in a thousand was lost. The accumulator is reduced by a whole
-     * interval each cycle, so the shortfall is bounded by a few ulps of the
-     * interval rather than growing with the number of requests. Sixteen ulps
-     * was the smallest multiple correct across 193 tested cadence shapes,
-     * including long runs; at a 0.7 s interval that is ~1.8e-15 s, far too
-     * small to admit a genuinely incomplete interval.
+     * Repeated addition and subtraction of second-valued quantities leaves the accumulator fractionally below a mathematically complete interval, which
+     * without tolerance strands the interval until a later request — measured, for example, at {@code dt = 0.1 s} with {@code k = 7},
+     * where one observation in a thousand was lost.
+     * The accumulator is reduced by a whole interval each cycle, so the shortfall is bounded by a few ulps of the interval rather than growing with the number of requests.
+     * Sixteen ulps was the smallest multiple correct across 193 tested cadence shapes,
+     * including long runs; at a 0.7 s interval that is ~1.8e-15 s, far too small to admit a genuinely incomplete interval.
      */
     private static final int INTERVAL_TOLERANCE_ULPS = 16;
 
@@ -107,7 +105,7 @@ public final class ScenarioSession {
 
         // IMPORtant: The ulp tolerance is capped at half the interval so the threshold remains strictly positive.
         // For any realistic interval the cap is inactive and the tolerance is exactly 16 ulps.
-        // This mirrors the finite-accumulator guard in SimulationEngine.advanceBy (ADR-006 §4).
+        // This mirrors the finite-accumulator guard in SimulationEngine.advanceBy (ADR-006 p.4).
         double ulpTolerance = INTERVAL_TOLERANCE_ULPS * Math.ulp(interval);
         double tolerance = Math.min(ulpTolerance, interval / 2.0);
         this.intervalThresholdSeconds = interval - tolerance;
@@ -249,12 +247,22 @@ public final class ScenarioSession {
 
             switch (evaluation)
             {
-                case COMPLETE -> terminate(ScenarioLifecycleState.COMPLETED,
+                case COMPLETE -> terminate(
+                        ScenarioLifecycleState.COMPLETED,
                         ScenarioTerminationReason.POLICY_COMPLETION);
-                case FAIL -> terminate(ScenarioLifecycleState.FAILED,
+
+                case FAIL -> terminate(
+                        ScenarioLifecycleState.FAILED,
                         ScenarioTerminationReason.POLICY_FAILURE);
-                case CONTINUE -> { /* keep advancing */ }
-            }//end switch
+
+                case ASSESSMENT_INVALID -> terminate(
+                        ScenarioLifecycleState.FAILED,
+                        ScenarioTerminationReason.ASSESSMENT_INVALID);
+
+                case CONTINUE -> {
+                    // Keep advancing
+                }
+            } // end switch ---------
         }
     } // --- end advanceBy() -------------=============================================
 

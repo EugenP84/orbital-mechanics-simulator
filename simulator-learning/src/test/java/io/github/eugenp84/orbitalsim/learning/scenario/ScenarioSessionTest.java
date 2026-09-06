@@ -22,10 +22,10 @@ import static org.junit.jupiter.api.Assertions.*;
 class ScenarioSessionTest {
 
     private static final double DT = 10.0;
-    private static final int K = 3;                 // observation interval = 30 s
+    private static final int K = 3; // observation interval = 30 s
     private static final double INTERVAL = K * DT;
 
-    // --- Fixtures ---
+    // ---========================= Fixtures --------
 
     private static List<BodySnapshot> oneBody() {
         return List.of(new BodySnapshot(
@@ -111,7 +111,7 @@ class ScenarioSessionTest {
         return session;
     }
 
-    // --- Construction and lifecycle ---
+    // ------------------ Construction and lifecycle ++++++++++++++++++++++++++++++---
 
     @Test
     void constructorValidatesCollaboratorsAndInterval() {
@@ -163,7 +163,7 @@ class ScenarioSessionTest {
         assertThrows(IllegalStateException.class, session::pause);
     }
 
-    // --- Cadence ---
+    // ---========= Cadence =============---
 
     @Test
     void aRequestBelowOneIntervalIsRetainedAndProducesNoObservation() {
@@ -367,19 +367,32 @@ class ScenarioSessionTest {
     }
 
     @Test
-    void policyFailureAndCompletionCarryDistinctTerminationReasons() {
+    void policyOutcomesCarryDistinctTerminationReasons()
+    {
         ScenarioSession failing = started(observation -> ScenarioEvaluation.FAIL);
         failing.advanceBy(INTERVAL);
+
         assertEquals(ScenarioLifecycleState.FAILED, failing.state());
-        assertEquals(Optional.of(ScenarioTerminationReason.POLICY_FAILURE),
+        assertEquals(
+                Optional.of(ScenarioTerminationReason.POLICY_FAILURE),
                 failing.terminationReason());
+
+        ScenarioSession invalid = started(observation -> ScenarioEvaluation.ASSESSMENT_INVALID);
+        invalid.advanceBy(INTERVAL);
+
+        assertEquals(ScenarioLifecycleState.FAILED, invalid.state());
+        assertEquals(
+                Optional.of(ScenarioTerminationReason.ASSESSMENT_INVALID),
+                invalid.terminationReason());
 
         ScenarioSession completing = started(RecordingPolicy.completingAt(30.0));
         completing.advanceBy(INTERVAL);
+
         assertEquals(ScenarioLifecycleState.COMPLETED, completing.state());
-        assertEquals(Optional.of(ScenarioTerminationReason.POLICY_COMPLETION),
+        assertEquals(
+                Optional.of(ScenarioTerminationReason.POLICY_COMPLETION),
                 completing.terminationReason());
-    }
+    } // end of olicyOutcomesCarryDistinctTerminationReasons() ---------------!!!!!!!!!!!
 
     @Test
     void aRunningScenarioHasNoTerminationReason() {
@@ -504,5 +517,20 @@ class ScenarioSessionTest {
         assertThrows(IllegalArgumentException.class, () -> session.advanceBy(Double.NaN));
         assertThrows(IllegalArgumentException.class,
                 () -> session.advanceBy(Double.POSITIVE_INFINITY));
+    }
+
+    @Test
+    void anInvalidAssessmentTerminatesAtTheFirstInvalidObservation() {
+        ScenarioSession session =
+                started(observation -> ScenarioEvaluation.ASSESSMENT_INVALID);
+
+        session.advanceBy(300.0);
+
+        assertEquals(ScenarioLifecycleState.FAILED, session.state());
+        assertEquals(
+                Optional.of(ScenarioTerminationReason.ASSESSMENT_INVALID),
+                session.terminationReason());
+        assertEquals(INTERVAL, session.snapshot().simulationTimeSeconds(), 1e-12);
+        assertEquals(0.0, session.pendingSeconds(), 1e-12);
     }
 }

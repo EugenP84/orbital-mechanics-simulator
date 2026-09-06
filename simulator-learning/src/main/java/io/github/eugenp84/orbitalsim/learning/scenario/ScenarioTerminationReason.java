@@ -19,6 +19,12 @@ public enum ScenarioTerminationReason
      */
     POLICY_FAILURE,
 
+
+    /**
+     * The completion policy determined that the current attempt could no longer be assessed reliably.
+     */
+    ASSESSMENT_INVALID,
+
     /**
      * The engine reported numerical breakdown.
      * The simulation result cannot be trusted, so no pedagogical conclusion is drawn — this is a technical failure, not a statement about the learner's configuration.
