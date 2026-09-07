@@ -29,7 +29,7 @@ accuracy, energy behaviour and computational cost.
 |---|---|---------------|
 | `simulator-core` | Domain model, gravitational physics, numerical integrators, simulation engine | Complete      |
 | `simulator-data` | NASA NeoWs integration, offline cache, JSON persistence | Complete      |
-| `simulator-learning` | Progressive learning scenarios and adaptive hint system | Started       |
+| `simulator-learning` | Progressive learning scenarios and adaptive hint system | In progress   |
 | `simulator-app` | JavaFX desktop application | Skeleton only |
 
 The dependency direction is one-way: `simulator-app` → `{simulator-learning,
@@ -104,6 +104,7 @@ position was revised in review:
 | ADR-006 | Simulation engine execution model |
 | ADR-007 | External NEO data acquisition and trust boundary |
 | ADR-008 | Learning Scenario Architecture and Evaluation Cadence |
+| ADR-009 | Orbital State Analysis and Element Semantics |
 
 ## Documentation
 
@@ -113,4 +114,4 @@ position was revised in review:
 ## Status
 
 **Phase 3 — Development.** `simulator-core` and `simulator-data` are complete and tested; work is
-underway on `simulator-learning` (progressive scenarios and the adaptive hint system) - Session/cadence skeleton complete; scenarios pending.
+underway on `simulator-learning` (progressive scenarios and the adaptive hint system) - Session/cadence skeleton complete; L1 scenario - in progress.
