@@ -23,6 +23,8 @@ import java.util.Objects;
  * @param orbitingBody              the body this approach is measured relative
  *                                  to (for NeoWs close approaches, "Earth");
  *                                  never null or blank
+ *
+ * @author Eugeniu PLATITA
  */
 public record CloseApproach(
         Instant epoch,

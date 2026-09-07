@@ -257,4 +257,25 @@ class OrbitalStateCalculatorTest
         assertThrows(IllegalArgumentException.class, () -> new OrbitalStateAnalysis(
                 h, -1.0, e, -0.1, OptionalDouble.of(1.0), OptionalDouble.of(0.0)));
     }
+
+    @Test
+    void azimuthFoldsTheTwoPiBoundaryDownToZero() {
+        // A position marginally below the +x axis gives atan2 ≈ -2.4e-16, and
+        // adding 2*pi to that rounds to exactly 2*pi. Since 0 and 2*pi are the
+        // same direction, the result must fold to 0 rather than leave the
+        // half-open range.
+        double speed = Math.sqrt(MU_SUN / AU);
+        double fullTurn = 2.0 * Math.PI;
+
+        OrbitalStateAnalysis a = OrbitalStateCalculator.analyse(
+                new Vector3D(AU * Math.cos(fullTurn), AU * Math.sin(fullTurn), 0),
+                new Vector3D(-speed * Math.sin(fullTurn), speed * Math.cos(fullTurn), 0),
+                MU_SUN);
+
+        assertTrue(a.referencePlaneAzimuth().isPresent());
+        double azimuth = a.referencePlaneAzimuth().getAsDouble();
+        assertTrue(azimuth >= 0.0 && azimuth < fullTurn,
+                "azimuth must remain within [0, 2pi), was: " + azimuth);
+        assertEquals(0.0, azimuth, 1e-12);
+    }
 }

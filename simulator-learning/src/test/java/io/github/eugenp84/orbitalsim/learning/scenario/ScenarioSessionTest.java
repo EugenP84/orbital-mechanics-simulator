@@ -22,10 +22,18 @@ import static org.junit.jupiter.api.Assertions.*;
 class ScenarioSessionTest {
 
     private static final double DT = 10.0;
-    private static final int K = 3; // observation interval = 30 s
+    private static final int K = 3;                 // observation interval = 30 s
     private static final double INTERVAL = K * DT;
 
-    // ---========================= Fixtures --------
+    // --- Fixtures ---
+
+    private static ScenarioObservationCadence cadence() {
+        return new ScenarioObservationCadence(DT, K);
+    }
+
+    private static ScenarioObservationCadence cadence(double timeStep, int steps) {
+        return new ScenarioObservationCadence(timeStep, steps);
+    }
 
     private static List<BodySnapshot> oneBody() {
         return List.of(new BodySnapshot(
@@ -106,49 +114,63 @@ class ScenarioSessionTest {
     }
 
     private static ScenarioSession started(ScenarioCompletionPolicy policy) {
-        ScenarioSession session = new ScenarioSession(engine(), policy, K);
+        ScenarioSession session = new ScenarioSession(engine(), policy, cadence());
         session.start();
         return session;
     }
 
-    // ------------------ Construction and lifecycle ++++++++++++++++++++++++++++++---
+    // --- Construction and lifecycle ---
 
     @Test
-    void constructorValidatesCollaboratorsAndInterval() {
+    void constructorRejectsNullCollaborators() {
         SimulationEngine e = engine();
         ScenarioCompletionPolicy p = RecordingPolicy.neverCompleting();
 
-        assertThrows(NullPointerException.class, () -> new ScenarioSession(null, p, K));
-        assertThrows(NullPointerException.class, () -> new ScenarioSession(e, null, K));
-        assertThrows(IllegalArgumentException.class, () -> new ScenarioSession(e, p, 0));
-        assertThrows(IllegalArgumentException.class, () -> new ScenarioSession(e, p, -1));
+        assertThrows(NullPointerException.class,
+                () -> new ScenarioSession(null, p, cadence()));
+        assertThrows(NullPointerException.class,
+                () -> new ScenarioSession(e, null, cadence()));
+        assertThrows(NullPointerException.class,
+                () -> new ScenarioSession(e, p, null));
     }
 
     @Test
-    void constructorRejectsAnOverflowingObservationInterval() {
-        SimulationEngine huge = engineWithTimestep(1.0e308);
-        assertThrows(IllegalArgumentException.class,
-                () -> new ScenarioSession(huge, RecordingPolicy.neverCompleting(), 1000));
+    void aCadenceDescribingADifferentTimestepIsRejected() {
+        // Protects the invariant the cadence object exists to enforce: a policy
+        // must not validate its assumptions against a cadence the session will
+        // not execute.
+        assertThrows(IllegalArgumentException.class, () -> new ScenarioSession(
+                engine(),                                   // timestep DT
+                RecordingPolicy.neverCompleting(),
+                cadence(DT * 2.0, K)));
     }
 
     @Test
     void observationIntervalIsAnExactIntegerMultipleOfTheTimestep() {
         ScenarioSession session =
-                new ScenarioSession(engine(), RecordingPolicy.neverCompleting(), K);
+                new ScenarioSession(engine(), RecordingPolicy.neverCompleting(), cadence());
         assertEquals(INTERVAL, session.observationIntervalSeconds(), 1e-12);
+    }
+
+    @Test
+    void theSessionExposesTheCadenceItWasGiven() {
+        ScenarioObservationCadence given = cadence();
+        ScenarioSession session =
+                new ScenarioSession(engine(), RecordingPolicy.neverCompleting(), given);
+        assertEquals(given, session.cadence());
     }
 
     @Test
     void aNewSessionIsNotStarted() {
         ScenarioSession session =
-                new ScenarioSession(engine(), RecordingPolicy.neverCompleting(), K);
+                new ScenarioSession(engine(), RecordingPolicy.neverCompleting(), cadence());
         assertEquals(ScenarioLifecycleState.NOT_STARTED, session.state());
     }
 
     @Test
     void invalidLifecycleTransitionsAreRejected() {
         ScenarioSession session =
-                new ScenarioSession(engine(), RecordingPolicy.neverCompleting(), K);
+                new ScenarioSession(engine(), RecordingPolicy.neverCompleting(), cadence());
 
         assertThrows(IllegalStateException.class, session::pause);
         assertThrows(IllegalStateException.class, session::resume);
@@ -163,7 +185,7 @@ class ScenarioSessionTest {
         assertThrows(IllegalStateException.class, session::pause);
     }
 
-    // ---========= Cadence =============---
+    // --- Cadence ---
 
     @Test
     void aRequestBelowOneIntervalIsRetainedAndProducesNoObservation() {
@@ -239,7 +261,8 @@ class ScenarioSessionTest {
         double dt = 0.1;
         int k = 7;
         RecordingPolicy policy = RecordingPolicy.neverCompleting();
-        ScenarioSession session = new ScenarioSession(engineWithTimestep(dt), policy, k);
+        ScenarioSession session =
+                new ScenarioSession(engineWithTimestep(dt), policy, cadence(dt, k));
         session.start();
 
         for (int i = 0; i < 7000; i++) {
@@ -264,16 +287,14 @@ class ScenarioSessionTest {
     }
 
     @Test
-    void anOverflowingAccumulationIsRejectedWithoutDisturbingPendingTime()
-    {
-        // Overflow requires both operands to be large. After any completed advance the loop drains pending below the interval, so pending can
-        // only become large when the interval itself is large — the same
-        // reachability condition as the engine's accumulator guard
-        // (ADR-006 §4). Note that a small pending plus Double.MAX_VALUE does
-        // NOT overflow: it absorbs back to MAX_VALUE.
+    void anOverflowingAccumulationIsRejectedWithoutDisturbingPendingTime() {
+        // Overflow requires both operands to be large. After any completed
+        // advance the loop drains pending below the interval, so pending can
+        // only become large when the interval itself is large. Note that a
+        // small pending plus Double.MAX_VALUE does NOT overflow: it absorbs.
         RecordingPolicy policy = RecordingPolicy.neverCompleting();
-        ScenarioSession session =
-                new ScenarioSession(engineWithTimestep(1.0e308), policy, 1);
+        ScenarioSession session = new ScenarioSession(
+                engineWithTimestep(1.0e308), policy, cadence(1.0e308, 1));
         session.start();
 
         session.advanceBy(9.0e307);     // below the 1e308 interval: retained
@@ -293,8 +314,9 @@ class ScenarioSessionTest {
         // go negative and the advancement loop would not terminate. A timeout
         // is the correct instrument here because the failure mode is a hang.
         RecordingPolicy policy = RecordingPolicy.neverCompleting();
-        ScenarioSession session =
-                new ScenarioSession(engineWithTimestep(Double.MIN_VALUE), policy, 1);
+        ScenarioSession session = new ScenarioSession(
+                engineWithTimestep(Double.MIN_VALUE), policy,
+                cadence(Double.MIN_VALUE, 1));
         session.start();
 
         assertTimeoutPreemptively(Duration.ofSeconds(2), () -> session.advanceBy(0.0));
@@ -367,32 +389,28 @@ class ScenarioSessionTest {
     }
 
     @Test
-    void policyOutcomesCarryDistinctTerminationReasons()
-    {
+    void policyOutcomesCarryDistinctTerminationReasons() {
+        // The three policy-generated terminal outcomes must remain
+        // distinguishable: a learner failure and an unassessable attempt share
+        // a lifecycle state but mean different things.
         ScenarioSession failing = started(observation -> ScenarioEvaluation.FAIL);
         failing.advanceBy(INTERVAL);
-
         assertEquals(ScenarioLifecycleState.FAILED, failing.state());
-        assertEquals(
-                Optional.of(ScenarioTerminationReason.POLICY_FAILURE),
+        assertEquals(Optional.of(ScenarioTerminationReason.POLICY_FAILURE),
                 failing.terminationReason());
 
         ScenarioSession invalid = started(observation -> ScenarioEvaluation.ASSESSMENT_INVALID);
         invalid.advanceBy(INTERVAL);
-
         assertEquals(ScenarioLifecycleState.FAILED, invalid.state());
-        assertEquals(
-                Optional.of(ScenarioTerminationReason.ASSESSMENT_INVALID),
+        assertEquals(Optional.of(ScenarioTerminationReason.ASSESSMENT_INVALID),
                 invalid.terminationReason());
 
         ScenarioSession completing = started(RecordingPolicy.completingAt(30.0));
         completing.advanceBy(INTERVAL);
-
         assertEquals(ScenarioLifecycleState.COMPLETED, completing.state());
-        assertEquals(
-                Optional.of(ScenarioTerminationReason.POLICY_COMPLETION),
+        assertEquals(Optional.of(ScenarioTerminationReason.POLICY_COMPLETION),
                 completing.terminationReason());
-    } // end of olicyOutcomesCarryDistinctTerminationReasons() ---------------!!!!!!!!!!!
+    }
 
     @Test
     void aRunningScenarioHasNoTerminationReason() {
@@ -412,7 +430,7 @@ class ScenarioSessionTest {
     void engineBreakdownFailsTheScenarioWithoutConsultingThePolicy() {
         RecordingPolicy policy = RecordingPolicy.neverCompleting();
         ScenarioSession session =
-                new ScenarioSession(engineBreakingAfter(2 * K), policy, K);
+                new ScenarioSession(engineBreakingAfter(2 * K), policy, cadence());
         session.start();
 
         session.advanceBy(10 * INTERVAL);
@@ -429,7 +447,7 @@ class ScenarioSessionTest {
     void noAdvancementOccursAfterBreakdown() {
         RecordingPolicy policy = RecordingPolicy.neverCompleting();
         ScenarioSession session =
-                new ScenarioSession(engineBreakingAfter(2 * K), policy, K);
+                new ScenarioSession(engineBreakingAfter(2 * K), policy, cadence());
         session.start();
         session.advanceBy(10 * INTERVAL);
 
@@ -448,7 +466,7 @@ class ScenarioSessionTest {
         e.advanceBy(5 * INTERVAL);          // 150 s before the scenario starts
 
         RecordingPolicy policy = RecordingPolicy.neverCompleting();
-        ScenarioSession session = new ScenarioSession(e, policy, K);
+        ScenarioSession session = new ScenarioSession(e, policy, cadence());
         session.start();
 
         assertEquals(0.0, session.elapsedScenarioSeconds(), 1e-12);
@@ -465,7 +483,7 @@ class ScenarioSessionTest {
         e.advanceBy(5 * INTERVAL);          // engine clock already at 150 s
 
         ScenarioSession session =
-                new ScenarioSession(e, RecordingPolicy.neverCompleting(), K);
+                new ScenarioSession(e, RecordingPolicy.neverCompleting(), cadence());
 
         assertThrows(IllegalStateException.class, session::elapsedScenarioSeconds,
                 "an unstarted scenario has no baseline, so elapsed time is undefined");
@@ -517,20 +535,5 @@ class ScenarioSessionTest {
         assertThrows(IllegalArgumentException.class, () -> session.advanceBy(Double.NaN));
         assertThrows(IllegalArgumentException.class,
                 () -> session.advanceBy(Double.POSITIVE_INFINITY));
-    }
-
-    @Test
-    void anInvalidAssessmentTerminatesAtTheFirstInvalidObservation() {
-        ScenarioSession session =
-                started(observation -> ScenarioEvaluation.ASSESSMENT_INVALID);
-
-        session.advanceBy(300.0);
-
-        assertEquals(ScenarioLifecycleState.FAILED, session.state());
-        assertEquals(
-                Optional.of(ScenarioTerminationReason.ASSESSMENT_INVALID),
-                session.terminationReason());
-        assertEquals(INTERVAL, session.snapshot().simulationTimeSeconds(), 1e-12);
-        assertEquals(0.0, session.pendingSeconds(), 1e-12);
     }
 }

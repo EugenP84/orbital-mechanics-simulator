@@ -143,12 +143,20 @@ public final class OrbitalStateCalculator
      */
     private static OptionalDouble referencePlaneAzimuth(double rx, double ry)
     {
-        if (rx == 0.0 && ry == 0.0) {
+        if (rx == 0.0 && ry == 0.0)
+        {
             return OptionalDouble.empty();
         }
 
         double azimuth = Math.atan2(ry, rx);
-        return OptionalDouble.of(azimuth < 0.0 ? azimuth + TWO_PI : azimuth);
+        if (azimuth < 0.0)
+        {
+            azimuth += TWO_PI;
+        }
+        if (azimuth >= TWO_PI) {
+            azimuth = 0.0;
+        }
+        return OptionalDouble.of(azimuth);
     }
 
     private static void requireFiniteComponents(Vector3D vector, String name)
