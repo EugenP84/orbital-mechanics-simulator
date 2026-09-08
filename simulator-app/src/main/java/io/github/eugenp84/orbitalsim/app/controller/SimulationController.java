@@ -7,6 +7,7 @@ import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioSession;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
 import java.util.Optional;
 import java.util.Objects;
+import java.util.OptionalDouble;
 
 
 /**
@@ -155,5 +156,18 @@ public final class SimulationController
     public Optional<ScenarioTerminationReason> terminationReason()
     {
         return session.terminationReason();
+    }
+
+    /**
+     * Simulated seconds elapsed since the current attempt started, or empty while not started.
+     * Empty is a real state — a not-yet-started attempt has no baseline from which to measure — not an error or a zero.
+     */
+    public OptionalDouble elapsedSimulatedSeconds()
+    {
+        if (session.state() == ScenarioLifecycleState.NOT_STARTED)
+        {
+            return OptionalDouble.empty();
+        }
+        return OptionalDouble.of(session.elapsedScenarioSeconds());
     }
 }

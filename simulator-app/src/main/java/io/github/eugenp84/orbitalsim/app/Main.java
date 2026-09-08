@@ -21,6 +21,7 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.OptionalDouble;
 
 /**
  * JavaFX entry point for the orbital mechanics simulator.
@@ -45,6 +46,7 @@ public final class Main extends Application {
     private static final double CANVAS_HEIGHT_PIXELS = 700.0;
     private static final double VIEW_MARGIN_FACTOR = 1.15;
     private static final double NANOS_PER_SECOND = 1_000_000_000.0;
+    private static final String INTEGRATOR_LABEL = "Integrator: Velocity Verlet (fixed)";
 
     // A stalled frame, debugger or GC pause must not become one huge simulated-time request.
     // Excess wall-clock time is discarded, not replayed.
@@ -60,6 +62,7 @@ public final class Main extends Application {
     private SimulationController controller;
     private Button runPauseButton;
     private Label stateLabel;
+    private Label elapsedLabel;
 
     /**
      * Standard Java entry point.
@@ -146,6 +149,9 @@ public final class Main extends Application {
 
         stateLabel = new Label();
 
+        elapsedLabel = new Label();
+        final Label integratorLabel = new Label(INTEGRATOR_LABEL);
+
         final HBox controlBar = new HBox(
                 CONTROL_BAR_SPACING_PIXELS,
                 runPauseButton,
@@ -153,7 +159,9 @@ public final class Main extends Application {
                 new Label("Speed:"),
                 speedSlider,
                 speedValueLabel,
-                stateLabel);
+                stateLabel,
+                integratorLabel,
+                elapsedLabel);
         controlBar.setAlignment(Pos.CENTER_LEFT);
         controlBar.setPadding(new Insets(CONTROL_BAR_PADDING_PIXELS));
         return controlBar;
@@ -196,18 +204,27 @@ public final class Main extends Application {
         };
     }
 
-    private void updateControlStates() {
+    private void updateControlStates()
+    {
         final ScenarioLifecycleState current = controller.state();
         runPauseButton.setText(runPauseLabelFor(current));
         runPauseButton.setDisable(!controller.canToggleRun());
         stateLabel.setText(statusTextFor(current, controller.terminationReason()));
+        elapsedLabel.setText(elapsedTextFor(controller.elapsedSimulatedSeconds()));
     }
 
-    private static String statusTextFor(
-            final ScenarioLifecycleState state,
-            final Optional<ScenarioTerminationReason> reason) {
+    private static String elapsedTextFor(final OptionalDouble elapsedSeconds)
+    {
+        if (elapsedSeconds.isEmpty()) {
+            return "Elapsed: —";
+        }
+        return String.format(Locale.ROOT, "Elapsed: %.1f days",elapsedSeconds.getAsDouble() / SECONDS_PER_DAY);
+    }
 
-        if (reason.isEmpty()) {
+    private static String statusTextFor(final ScenarioLifecycleState state, final Optional<ScenarioTerminationReason> reason)
+    {
+        if (reason.isEmpty())
+        {
             return "Status: " + statusWordFor(state);
         }
         return "Status: " + statusWordFor(state) + " — " + learnerTextFor(reason.get());

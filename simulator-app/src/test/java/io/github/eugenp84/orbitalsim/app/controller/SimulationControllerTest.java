@@ -157,4 +157,26 @@ class SimulationControllerTest
         controller.advanceByWallClock(AMPLE_WALL_CLOCK_SECONDS);
         assertTrue(controller.terminationReason().isPresent());
     }
+
+    @Test
+    void elapsedIsEmptyBeforeStartAndPresentWhileRunning()
+    {
+        final SimulationController controller = new SimulationController(new Level1Scenario());
+        assertTrue(controller.elapsedSimulatedSeconds().isEmpty());
+        controller.toggleRun();
+        controller.advanceByWallClock(0.1);
+        assertTrue(controller.elapsedSimulatedSeconds().isPresent());
+    }
+
+    @Test
+    void elapsedIsEmptyBeforeStartAndDefinedFromTheMomentTheAttemptStarts()
+    {
+        final SimulationController controller =  new SimulationController(new Level1Scenario());
+        assertTrue(controller.elapsedSimulatedSeconds().isEmpty());
+        controller.toggleRun();
+        assertTrue(controller.elapsedSimulatedSeconds().isPresent());
+        assertEquals(0.0, controller.elapsedSimulatedSeconds().getAsDouble());
+        controller.advanceByWallClock(0.1);
+        assertTrue(controller.elapsedSimulatedSeconds().getAsDouble() > 0.0);
+    }
 }
