@@ -5,6 +5,7 @@ import io.github.eugenp84.orbitalsim.app.rendering.SimulationRenderer;
 import io.github.eugenp84.orbitalsim.app.rendering.ViewTransform;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level1Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
+import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -19,6 +20,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * JavaFX entry point for the orbital mechanics simulator.
@@ -194,12 +196,40 @@ public final class Main extends Application {
         };
     }
 
-    private void updateControlStates()
-    {
+    private void updateControlStates() {
         final ScenarioLifecycleState current = controller.state();
         runPauseButton.setText(runPauseLabelFor(current));
         runPauseButton.setDisable(!controller.canToggleRun());
-        stateLabel.setText("State: " + current);
+        stateLabel.setText(statusTextFor(current, controller.terminationReason()));
+    }
+
+    private static String statusTextFor(
+            final ScenarioLifecycleState state,
+            final Optional<ScenarioTerminationReason> reason) {
+
+        if (reason.isEmpty()) {
+            return "Status: " + statusWordFor(state);
+        }
+        return "Status: " + statusWordFor(state) + " — " + learnerTextFor(reason.get());
+    }
+
+    private static String statusWordFor(final ScenarioLifecycleState state) {
+        return switch (state) {
+            case NOT_STARTED -> "Ready";
+            case RUNNING -> "Running";
+            case PAUSED -> "Paused";
+            case COMPLETED -> "Completed";
+            case FAILED -> "Failed";
+        };
+    }
+
+    private static String learnerTextFor(final ScenarioTerminationReason reason) {
+        return switch (reason) {
+            case POLICY_COMPLETION -> "stable orbit achieved";
+            case POLICY_FAILURE -> "the orbit did not stay stable";
+            case ASSESSMENT_INVALID -> "the orbit could not be assessed reliably";
+            case SIMULATION_BREAKDOWN -> "the simulation became numerically unstable";
+        };
     }
 
     private static String formatSpeed(final double daysPerSecond)

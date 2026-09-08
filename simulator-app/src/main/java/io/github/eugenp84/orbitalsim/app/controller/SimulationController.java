@@ -4,7 +4,10 @@ import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level1Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioSession;
+import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
+import java.util.Optional;
 import java.util.Objects;
+
 
 /**
  * Coordinates a running Level 1 scenario on behalf of the user interface.
@@ -146,5 +149,11 @@ public final class SimulationController
     private ScenarioSession newAttemptSession()
     {
         return scenario.createAttempt(scenario.circularSpeedMetresPerSecond()).session();
+    }
+
+    /** Why the scenario terminated, or empty if it has not terminated. */
+    public Optional<ScenarioTerminationReason> terminationReason()
+    {
+        return session.terminationReason();
     }
 }

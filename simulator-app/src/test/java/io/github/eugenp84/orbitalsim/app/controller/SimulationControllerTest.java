@@ -139,4 +139,22 @@ class SimulationControllerTest
         controller.setSimulatedSecondsPerRealSecond(SECONDS_PER_DAY);
         assertEquals(SECONDS_PER_DAY, controller.simulatedSecondsPerRealSecond());
     }
+
+    @Test
+    void noTerminationReasonBeforeTerminating()
+    {
+        final SimulationController controller = new SimulationController(new Level1Scenario());
+        assertTrue(controller.terminationReason().isEmpty());
+        controller.toggleRun();
+        assertTrue(controller.terminationReason().isEmpty());
+    }
+
+    @Test
+    void aTerminatedAttemptReportsAReason()
+    {
+        final SimulationController controller = new SimulationController(new Level1Scenario());
+        controller.toggleRun();
+        controller.advanceByWallClock(AMPLE_WALL_CLOCK_SECONDS);
+        assertTrue(controller.terminationReason().isPresent());
+    }
 }
