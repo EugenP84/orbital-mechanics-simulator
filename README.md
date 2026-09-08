@@ -25,12 +25,12 @@ accuracy, energy behaviour and computational cost.
 
 ## Modules
 
-| Module | Responsibility | Status        |
-|---|---|---------------|
-| `simulator-core` | Domain model, gravitational physics, numerical integrators, simulation engine | Complete      |
-| `simulator-data` | NASA NeoWs integration, offline cache, JSON persistence | Complete      |
-| `simulator-learning` | Progressive learning scenarios and adaptive hint system | In progress   |
-| `simulator-app` | JavaFX desktop application | Skeleton only |
+| Module | Responsibility | Status                     |
+|---|---|----------------------------|
+| `simulator-core` | Domain model, gravitational physics, numerical integrators, simulation engine | Complete                   |
+| `simulator-data` | NASA NeoWs integration, offline cache, JSON persistence | Complete                   |
+| `simulator-learning` | Progressive learning scenarios and adaptive hint system | In progress                |
+| `simulator-app` | JavaFX desktop application | Basic features in progress |
 
 The dependency direction is one-way: `simulator-app` → `{simulator-learning,
 simulator-data}` → `simulator-core`. The core depends on nothing outside the
@@ -115,3 +115,4 @@ position was revised in review:
 
 **Phase 3 — Development.** `simulator-core` and `simulator-data` are complete and tested; work is
 underway on `simulator-learning` (progressive scenarios and the adaptive hint system) - Session/cadence skeleton complete; L1 scenario - in progress.
+`simulator-app` - in progress (basic features implemented).
