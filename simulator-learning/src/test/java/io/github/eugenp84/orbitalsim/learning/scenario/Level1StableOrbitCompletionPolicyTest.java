@@ -10,6 +10,8 @@ import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.function.Executable;
+
 
 class Level1StableOrbitCompletionPolicyTest
 {
@@ -136,7 +138,20 @@ class Level1StableOrbitCompletionPolicyTest
         return ScenarioEvaluation.CONTINUE;
     }
 
+    /**
+     * Asserts a configuration or argument defect: it fails as an {@link IllegalArgumentException},
+     * but is specifically not the assessability refusal, which the controller layer catches.
+     * This tests the semantic boundary the production code relies on.
+     */
+    private static void assertConfigurationFailure(final Executable action)
+    {
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, action);
+        assertFalse(exception instanceof ScenarioAttemptNotAssessableException);
+    }
+
     // ----------------- Construction ------------------------------------------------------------
+
+
 
     @Test
     void constructionValidatesItsArguments() {
@@ -151,14 +166,13 @@ class Level1StableOrbitCompletionPolicyTest
         assertThrows(NullPointerException.class, () -> new Level1StableOrbitCompletionPolicy(
                 initial, STAR, PLANET, MU, CADENCE, null));
 
-        assertThrows(IllegalArgumentException.class, () -> new Level1StableOrbitCompletionPolicy(
+        assertConfigurationFailure(() -> new Level1StableOrbitCompletionPolicy(
                 initial, "  ", PLANET, MU, CADENCE, CRITERIA));
-        assertThrows(IllegalArgumentException.class, () -> new Level1StableOrbitCompletionPolicy(
-                        initial, STAR, STAR, MU, CADENCE, CRITERIA),
-                "the reference and learner bodies must be different");
-        assertThrows(IllegalArgumentException.class, () -> new Level1StableOrbitCompletionPolicy(
+        assertConfigurationFailure(() -> new Level1StableOrbitCompletionPolicy(
+                initial, STAR, STAR, MU, CADENCE, CRITERIA));
+        assertConfigurationFailure(() -> new Level1StableOrbitCompletionPolicy(
                 initial, STAR, PLANET, 0.0, CADENCE, CRITERIA));
-        assertThrows(IllegalArgumentException.class, () -> new Level1StableOrbitCompletionPolicy(
+        assertConfigurationFailure(() -> new Level1StableOrbitCompletionPolicy(
                 initial, STAR, PLANET, Double.NaN, CADENCE, CRITERIA));
     }
 
@@ -166,9 +180,9 @@ class Level1StableOrbitCompletionPolicyTest
     void constructionRejectsAnUnresolvableBody() {
         SimulationSnapshot initial = orbitAt(AU, 0.0, 0.0);
 
-        assertThrows(IllegalArgumentException.class, () -> new Level1StableOrbitCompletionPolicy(
+        assertConfigurationFailure(() -> new Level1StableOrbitCompletionPolicy(
                 initial, "no-such-star", PLANET, MU, CADENCE, CRITERIA));
-        assertThrows(IllegalArgumentException.class, () -> new Level1StableOrbitCompletionPolicy(
+        assertConfigurationFailure(() -> new Level1StableOrbitCompletionPolicy(
                 initial, STAR, "no-such-planet", MU, CADENCE, CRITERIA));
     }
 
@@ -179,8 +193,9 @@ class Level1StableOrbitCompletionPolicyTest
         // from reversal and the attempt was never assessable.
         ScenarioObservationCadence coarse = new ScenarioObservationCadence(1.0e7, 2);
 
-        assertThrows(IllegalArgumentException.class, () -> new Level1StableOrbitCompletionPolicy(
-                orbitAt(AU, 0.0, 0.0), STAR, PLANET, MU, coarse, CRITERIA));
+        assertThrowsExactly(ScenarioAttemptNotAssessableException.class,
+                () -> new Level1StableOrbitCompletionPolicy(
+                        orbitAt(AU, 0.0, 0.0), STAR, PLANET, MU, coarse, CRITERIA));
     }
 
     @Test
@@ -192,8 +207,9 @@ class Level1StableOrbitCompletionPolicyTest
 
         assertDoesNotThrow(() -> new Level1StableOrbitCompletionPolicy(orbitAt(AU, 0.0, 0.0), STAR, PLANET, MU, fourPerOrbit, CRITERIA));
 
-        assertThrows(IllegalArgumentException.class, () -> new Level1StableOrbitCompletionPolicy(
-                orbitAt(AU, 0.5, 0.0), STAR, PLANET, MU, fourPerOrbit, CRITERIA));
+        assertThrowsExactly(ScenarioAttemptNotAssessableException.class,
+                () -> new Level1StableOrbitCompletionPolicy(
+                        orbitAt(AU, 0.5, 0.0), STAR, PLANET, MU, fourPerOrbit, CRITERIA));
     }
 
     @Test
@@ -201,7 +217,7 @@ class Level1StableOrbitCompletionPolicyTest
         // On the reference-plane normal the projection vanishes, so there is no angular coordinate from which to count revolutions.
         SimulationSnapshot onTheNormal = centreOfMassSnapshot(new Vector3D(0, 0, AU), new Vector3D(Math.sqrt(MU / AU), 0, 0));
 
-        assertThrows(IllegalArgumentException.class, () -> new Level1StableOrbitCompletionPolicy(onTheNormal, STAR, PLANET, MU, CADENCE, CRITERIA));
+        assertConfigurationFailure(() -> new Level1StableOrbitCompletionPolicy(onTheNormal, STAR, PLANET, MU, CADENCE, CRITERIA));
     }
 
     @Test
@@ -382,4 +398,6 @@ class Level1StableOrbitCompletionPolicyTest
         Level1StableOrbitCompletionPolicy policy = policyFor(orbitAt(AU, 0.0, 0.0));
         assertThrows(NullPointerException.class, () -> policy.evaluate(null));
     }
+
+
 }

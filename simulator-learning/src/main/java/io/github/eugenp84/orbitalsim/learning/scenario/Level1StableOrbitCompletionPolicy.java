@@ -221,10 +221,10 @@ public final class Level1StableOrbitCompletionPolicy implements ScenarioCompleti
 
         if (!(actualSamples > requiredSamples)) // Negated comparison so a non-finite value on either side is rejected rather than slipping through as an unsatisfied inequality.
         {
-            throw new IllegalArgumentException("the initial orbit yields " + actualSamples + " observations per revolution, at or below the "
-                            + requiredSamples + " required for eccentricity "
-                            + initialOrbit.eccentricity()
-                            + "; revolution counting would not be trustworthy");
+            throw new ScenarioAttemptNotAssessableException("the initial orbit yields " + actualSamples + " observations per revolution, at or below the "
+                    + requiredSamples + " required for eccentricity "
+                    + initialOrbit.eccentricity()
+                    + "; revolution counting would not be trustworthy");
         }
     } //end of requireAdequateSampling() -------------------------------------------------------
 
