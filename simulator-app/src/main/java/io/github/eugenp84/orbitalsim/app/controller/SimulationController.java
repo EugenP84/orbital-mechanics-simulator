@@ -39,7 +39,7 @@ public final class SimulationController
 
     private ScenarioSession session;
     private double simulatedSecondsPerRealSecond;
-    private double currentSpeedMetresPerSecond;
+    private double configuredSpeedMetresPerSecond;
 
     /**
      * Creates a controller holding a fresh, not-yet-started attempt at the scenario's circular
@@ -134,7 +134,7 @@ public final class SimulationController
     /** Rebuilds a fresh attempt at the current orbital speed, discarding progress. */
     public void reset()
     {
-        installAttempt(currentSpeedMetresPerSecond);
+        installAttempt(configuredSpeedMetresPerSecond);
     }
 
     /**
@@ -163,6 +163,15 @@ public final class SimulationController
     public double circularSpeedMetresPerSecond()
     {
         return scenario.circularSpeedMetresPerSecond();
+    }
+
+    /**
+     * The initial speed the installed attempt was built with, as a fraction of the circular speed.
+     * This is the configured launch speed, not the body's instantaneous orbital speed during the run.
+     */
+    public double configuredSpeedFractionOfCircular()
+    {
+        return configuredSpeedMetresPerSecond / scenario.circularSpeedMetresPerSecond();
     }
 
     /**
@@ -207,7 +216,7 @@ public final class SimulationController
         // createAttempt throws before the assignment completes if the attempt cannot be built,
         // so a refused reconfiguration leaves session and speed unchanged.
         this.session = scenario.createAttempt(speedMetresPerSecond).session();
-        this.currentSpeedMetresPerSecond = speedMetresPerSecond;
+        this.configuredSpeedMetresPerSecond = speedMetresPerSecond;
     }
 
     private boolean isTerminated()
