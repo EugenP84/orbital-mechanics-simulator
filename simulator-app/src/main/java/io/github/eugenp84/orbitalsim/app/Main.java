@@ -40,14 +40,13 @@ import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
  * <p>
  * The orbital-speed slider owns a single contract: whenever it is enabled, its value is the speed of
  * the currently configured, not-yet-started attempt. It commits a new attempt when a value settles
- * (drag end, track click or keyboard), not on every intermediate drag event, and only when the
- * settled fraction actually differs from the installed one. The learner-facing resolution is fixed
- * at {@code SPEED_FRACTION_STEP}; quantisation to that step is authoritative and independent of the
- * JavaFX slider's own snapping, so thumb, label and controller always represent the same value.
+ * (drag end, track click or keyboard), not on every intermediate drag event, and only when the settled fraction actually differs from the installed one.
+ * The learner-facing resolution is fixed at {@code SPEED_FRACTION_STEP};
+ * quantisation to that step is authoritative and independent of the JavaFX slider's own snapping,
+ * so thumb, label and controller always represent the same value.
  * Start is therefore a pure lifecycle action — it starts the attempt the slider already represents.
  * <p>
- * Advancement and rendering run on the JavaFX Application Thread; the frame loop runs continuously
- * and advances only while running.
+ * Advancement and rendering run on the JavaFX Application Thread; the frame loop runs continuously and advances only while running.
  *
  * @author Eugeniu PLATITA
  */
@@ -91,8 +90,8 @@ public final class Main extends Application
     private static final double TIME_RATE_SLIDER_WIDTH_PIXELS = 160.0;
     private static final double ORBITAL_SPEED_SLIDER_WIDTH_PIXELS = 280.0;
 
-    // ~1500 points at roughly orbital-radius/240 spacing shows about one full circular orbit of
-    // path; distance sampling keeps that consistent across time rates.
+    // The minimum spacing is approximately 1/240 of the reference orbital radius.
+    // The point cap comfortably retains at least one visually smooth L1 trajectory at the supported presentation rates.
     private static final int TRAIL_MAXIMUM_POINTS = 1_500;
     private static final double TRAIL_SEGMENT_DIVISOR = 240.0;
 
@@ -244,13 +243,22 @@ public final class Main extends Application
                 final double boundedWallClockSeconds =
                         Math.min(elapsedWallClockSeconds, MAX_FRAME_DELTA_SECONDS);
 
+                final boolean wasRunning =
+                        controller.state() == ScenarioLifecycleState.RUNNING;
+
+                if (wasRunning)
+                {
+                    planetPositionOf(controller.snapshot()).ifPresent(trail::record);
+                }
+
                 controller.advanceByWallClock(boundedWallClockSeconds);
 
                 final SimulationSnapshot snapshot = controller.snapshot();
-                if (controller.state() == ScenarioLifecycleState.RUNNING)
+                if (wasRunning)
                 {
                     planetPositionOf(snapshot).ifPresent(trail::record);
                 }
+
                 renderer.render(graphics, snapshot, transform, trail.points());
                 updateControlStates();
             }
@@ -334,8 +342,8 @@ public final class Main extends Application
     }
 
     /**
-     * Builds the Level 1 scene, renders its initial state and starts the frame loop. The scenario is
-     * not started here: the learner starts it with the control.
+     * Builds the Level 1 scene, renders its initial state and starts the frame loop.
+     * The scenario is not started here: the learner starts it with the control.
      *
      * @param stage the primary stage supplied by JavaFX; never null
      */
