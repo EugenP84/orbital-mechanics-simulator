@@ -3,6 +3,7 @@ package io.github.eugenp84.orbitalsim.app;
 import io.github.eugenp84.orbitalsim.app.controller.AttemptCreationResult;
 import io.github.eugenp84.orbitalsim.app.controller.SimulationController;
 import io.github.eugenp84.orbitalsim.app.rendering.SimulationRenderer;
+import io.github.eugenp84.orbitalsim.app.rendering.TrajectoryTrail;
 import io.github.eugenp84.orbitalsim.app.rendering.ViewTransform;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level1Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
@@ -26,6 +27,9 @@ import javafx.stage.Stage;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import io.github.eugenp84.orbitalsim.core.math.Vector3D;
+import io.github.eugenp84.orbitalsim.core.model.CelestialBodyType;
+import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
 
 /**
  * JavaFX entry point for the orbital mechanics simulator.
@@ -87,6 +91,11 @@ public final class Main extends Application
     private static final double TIME_RATE_SLIDER_WIDTH_PIXELS = 160.0;
     private static final double ORBITAL_SPEED_SLIDER_WIDTH_PIXELS = 280.0;
 
+    // ~1500 points at roughly orbital-radius/240 spacing shows about one full circular orbit of
+    // path; distance sampling keeps that consistent across time rates.
+    private static final int TRAIL_MAXIMUM_POINTS = 1_500;
+    private static final double TRAIL_SEGMENT_DIVISOR = 240.0;
+
     private AnimationTimer animationTimer;
     private SimulationController controller;
     private Button runPauseButton;
@@ -94,6 +103,8 @@ public final class Main extends Application
     private Label orbitalSpeedValueLabel;
     private Label stateLabel;
     private Label elapsedLabel;
+
+    private TrajectoryTrail trail;
 
     private VBox buildControlPanel()
     {
@@ -108,12 +119,12 @@ public final class Main extends Application
         resetButton.setOnAction(event ->
         {
             controller.reset();
+            trail.clear();
             updateControlStates();
         });
 
         orbitalSpeedValueLabel = new Label();
-        orbitalSpeedSlider = new Slider(
-                MIN_SPEED_FRACTION, MAX_SPEED_FRACTION, DEFAULT_SPEED_FRACTION);
+        orbitalSpeedSlider = new Slider(MIN_SPEED_FRACTION, MAX_SPEED_FRACTION, DEFAULT_SPEED_FRACTION);
         orbitalSpeedSlider.setPrefWidth(ORBITAL_SPEED_SLIDER_WIDTH_PIXELS);
         orbitalSpeedSlider.setBlockIncrement(SPEED_FRACTION_STEP);
         orbitalSpeedSlider.setMajorTickUnit(SPEED_FRACTION_STEP);
@@ -192,19 +203,15 @@ public final class Main extends Application
         final AttemptCreationResult result = controller.configureAttempt(speed);
         if (result == AttemptCreationResult.CREATED)
         {
-            // Normalise the thumb to the quantised value it was configured at, so thumb, label and
-            // controller are the same 0.01x value. The resulting listener fire settles to no rebuild.
             if (Double.compare(orbitalSpeedSlider.getValue(), fraction) != 0)
             {
                 orbitalSpeedSlider.setValue(fraction);
             }
+            trail.clear();
             updateControlStates();
             return;
         }
 
-        // NOT_ASSESSABLE (unreachable within 0.5-1.5x, defensive): the controller kept the previous
-        // attempt, so restore the slider to it and keep the invariant that the enabled slider always
-        // shows the configured attempt's speed. The restoring change settles to no rebuild.
         orbitalSpeedSlider.setValue(controller.configuredSpeedFractionOfCircular());
     }
 
@@ -238,12 +245,17 @@ public final class Main extends Application
                         Math.min(elapsedWallClockSeconds, MAX_FRAME_DELTA_SECONDS);
 
                 controller.advanceByWallClock(boundedWallClockSeconds);
-                renderer.render(graphics, controller.snapshot(), transform);
+
+                final SimulationSnapshot snapshot = controller.snapshot();
+                if (controller.state() == ScenarioLifecycleState.RUNNING)
+                {
+                    planetPositionOf(snapshot).ifPresent(trail::record);
+                }
+                renderer.render(graphics, snapshot, transform, trail.points());
                 updateControlStates();
             }
         };
     }
-
     private static String elapsedTextFor(final OptionalDouble elapsedSeconds)
     {
         if (elapsedSeconds.isEmpty())
@@ -298,6 +310,14 @@ public final class Main extends Application
         return Math.abs(selectedFraction - configuredFraction) > SPEED_FRACTION_EPSILON;
     }
 
+    private static Optional<Vector3D> planetPositionOf(final SimulationSnapshot snapshot)
+    {
+        return snapshot.bodies().stream()
+                .filter(body -> body.definition().type() == CelestialBodyType.PLANET)
+                .map(body -> body.state().position())
+                .findFirst();
+    }
+
     private static double quantiseSpeedFraction(final double fraction)
     {
         return Math.round(fraction / SPEED_FRACTION_STEP) * SPEED_FRACTION_STEP;
@@ -324,6 +344,7 @@ public final class Main extends Application
     {
         final Level1Scenario scenario = new Level1Scenario();
         controller = new SimulationController(scenario);
+        trail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, scenario.orbitalRadiusMetres() / TRAIL_SEGMENT_DIVISOR);
 
         final ViewTransform transform = ViewTransform.fitting(
                 CANVAS_WIDTH_PIXELS,
@@ -340,7 +361,7 @@ public final class Main extends Application
         root.setTop(buildControlPanel());
         root.setCenter(canvas);
 
-        renderer.render(graphics, controller.snapshot(), transform);
+        renderer.render(graphics, controller.snapshot(), transform, trail.points());
         updateControlStates();
 
         stage.setScene(new Scene(root));
@@ -350,7 +371,6 @@ public final class Main extends Application
         animationTimer = createAnimationTimer(renderer, graphics, transform);
         animationTimer.start();
     }
-
     private static String statusTextFor(
             final ScenarioLifecycleState state,
             final Optional<ScenarioTerminationReason> reason)
