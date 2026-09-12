@@ -24,6 +24,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.scene.paint.Color;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -117,7 +118,7 @@ public final class Main extends Application
         });
 
         final Button resetButton = new Button("Reset");
-        hintLabel = new Label();
+
         resetButton.setOnAction(event ->
         {
             controller.reset();
@@ -176,6 +177,7 @@ public final class Main extends Application
 
         stateLabel = new Label();
         elapsedLabel = new Label();
+        hintLabel = new Label();
 
         final HBox playbackRow = new HBox(
                 CONTROL_BAR_SPACING_PIXELS,
@@ -187,7 +189,10 @@ public final class Main extends Application
                 elapsedLabel);
         playbackRow.setAlignment(Pos.CENTER_LEFT);
 
-        final VBox controlPanel = new VBox(CONTROL_ROW_SPACING_PIXELS, attemptRow, playbackRow);
+        final HBox hintRow = new HBox(CONTROL_BAR_SPACING_PIXELS, hintLabel);
+        hintRow.setAlignment(Pos.CENTER_LEFT);
+
+        final VBox controlPanel = new VBox(CONTROL_ROW_SPACING_PIXELS, attemptRow, playbackRow, hintRow);
         controlPanel.setPadding(new Insets(CONTROL_PANEL_PADDING_PIXELS));
         return controlPanel;
     }
@@ -291,6 +296,16 @@ public final class Main extends Application
             case POLICY_FAILURE -> "the orbit did not meet the level criteria";
             case ASSESSMENT_INVALID -> "the orbit could not be assessed reliably";
             case SIMULATION_BREAKDOWN -> "the simulation became numerically unstable";
+        };
+    }
+
+    private static Color statusColourFor(final ScenarioLifecycleState state)
+    {
+        return switch (state)
+        {
+            case COMPLETED -> Color.web("#4caf50");
+            case FAILED -> Color.web("#e05252");
+            case NOT_STARTED, RUNNING, PAUSED -> Color.web("#c7ccd6");
         };
     }
 
@@ -436,8 +451,12 @@ public final class Main extends Application
         runPauseButton.setDisable(!controller.canToggleRun());
         orbitalSpeedSlider.setDisable(!orbitalSpeedSelectable(current));
         stateLabel.setText(statusTextFor(current, controller.terminationReason()));
+        stateLabel.setTextFill(statusColourFor(current));
         elapsedLabel.setText(elapsedTextFor(controller.elapsedSimulatedSeconds()));
         hintLabel.setText(hintTextFor(current, controller.latestHint()));
+
+
+
     }
 
     private void updateOrbitalSpeedLabel(final double fraction)
@@ -448,4 +467,5 @@ public final class Main extends Application
         orbitalSpeedValueLabel.setText(
                 String.format(Locale.ROOT, "%.2f × circular (%.1f km/s)", quantised, kilometresPerSecond));
     }
+
 }
