@@ -16,14 +16,14 @@ import java.util.Objects;
  * @param session                      the runnable scenario
  * @param referenceBodyId              the body the orbit is assessed about, for locating it within published snapshots
  * @param learnerBodyId                the learner-controlled body
- * @param orbitalRadiusMetres          initial separation, useful for choosing a
- *                                     rendering scale; positive and finite
+ * @param orbitalRadiusMetres          initial separation, useful for choosing a rendering scale; positive and finite
  * @param circularSpeedMetresPerSecond the analytic circular speed at that radius — the target the learner is aiming at, and a natural reference for input;
  *                                     positive and finite
  * @param initialSpeedMetresPerSecond  the speed this attempt was created with. positive and finite
  */
 public record Level1Attempt(
         ScenarioSession session,
+        HintSource hints,
         String referenceBodyId,
         String learnerBodyId,
         double orbitalRadiusMetres,
@@ -34,11 +34,10 @@ public record Level1Attempt(
     public Level1Attempt
     {
         Objects.requireNonNull(session, "session must not be null");
+        Objects.requireNonNull(hints, "hints must not be null");
         requireIdentifier(referenceBodyId, "referenceBodyId");
         requireIdentifier(learnerBodyId, "learnerBodyId");
 
-        // The two roles are distinct by definition, and the completion policy requires it;
-        // a self-validating record should not admit what its consumer will reject.
         if (referenceBodyId.equals(learnerBodyId)) {
             throw new IllegalArgumentException("referenceBodyId and learnerBodyId must identify different bodies");
         }

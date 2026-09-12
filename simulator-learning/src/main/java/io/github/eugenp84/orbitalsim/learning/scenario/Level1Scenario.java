@@ -101,20 +101,25 @@ public final class Level1Scenario {
                 TIME_STEP_SECONDS,
                 new VelocityVerletIntegrator());
 
+        // Compose the hint engine as an observer of committed states before handing the engine to the session.
+        // The session remains the sole advancer (ADR-008 p4); this only attaches an observer at the composition point, so hints see the learning observation cadence.
+        Level1HintEngine hintEngine = new Level1HintEngine(
+                STAR_ID, PLANET_ID, gravitationalParameter,
+                initialTangentialSpeed / circularSpeedMetresPerSecond());
+        engine.addListener(hintEngine);
+
         ScenarioObservationCadence cadence = new ScenarioObservationCadence(TIME_STEP_SECONDS, STEPS_PER_OBSERVATION);
 
-        // The policy validates sampling adequacy against this attempt's own orbit, so an unassessable choice is refused here rather than discovered part-way through the run.
-        Level1StableOrbitCompletionPolicy policy = new Level1StableOrbitCompletionPolicy(
-                engine.snapshot(), STAR_ID, PLANET_ID,
-                gravitationalParameter, cadence, PROVISIONAL_CRITERIA);
+        Level1StableOrbitCompletionPolicy policy = new Level1StableOrbitCompletionPolicy(engine.snapshot(), STAR_ID, PLANET_ID, gravitationalParameter, cadence, PROVISIONAL_CRITERIA);
 
         return new Level1Attempt(
                 new ScenarioSession(engine, policy, cadence),
+                hintEngine,
                 STAR_ID, PLANET_ID,
                 ORBITAL_RADIUS,
                 circularSpeedMetresPerSecond(),
                 initialTangentialSpeed);
-    }
+    } // ----- end createAttempt() -----------------------------------------------------
 
     /**
      * Places the two bodies either side of the origin in inverse mass proportion, so total momentum is zero and the total mechanical energy carries no bulk kinetic term.

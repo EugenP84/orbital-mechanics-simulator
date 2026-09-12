@@ -12,6 +12,9 @@ class Level1ScenarioTest
     /** A safety bound on the drive loop, in whole simulated days. */
     private static final int SIMULATED_LIMIT_DAYS = 3_000;
 
+    /** A trivial hint source for directly constructing Level1Attempt in validation tests. */
+    private static final HintSource NO_HINTS = Optional::empty;
+
     private final Level1Scenario scenario = new Level1Scenario();
 
     /**
@@ -136,16 +139,34 @@ class Level1ScenarioTest
                 scenario.createAttempt(scenario.circularSpeedMetresPerSecond()).session();
 
         assertThrows(IllegalArgumentException.class,
-                () -> new Level1Attempt(session, "a", "b", -1.0, 100.0, 100.0));
+                () -> new Level1Attempt(session, NO_HINTS, "a", "b", -1.0, 100.0, 100.0));
         assertThrows(IllegalArgumentException.class,
-                () -> new Level1Attempt(session, "a", "b", 1.0, 0.0, 100.0));
+                () -> new Level1Attempt(session, NO_HINTS, "a", "b", 1.0, 0.0, 100.0));
         assertThrows(IllegalArgumentException.class,
-                () -> new Level1Attempt(session, "a", "b", 1.0, 100.0, Double.NaN));
+                () -> new Level1Attempt(session, NO_HINTS, "a", "b", 1.0, 100.0, Double.NaN));
         assertThrows(IllegalArgumentException.class,
-                () -> new Level1Attempt(session, "  ", "b", 1.0, 100.0, 100.0));
+                () -> new Level1Attempt(session, NO_HINTS, "  ", "b", 1.0, 100.0, 100.0));
         assertThrows(NullPointerException.class,
-                () -> new Level1Attempt(null, "a", "b", 1.0, 100.0, 100.0));
+                () -> new Level1Attempt(null, NO_HINTS, "a", "b", 1.0, 100.0, 100.0));
+        assertThrows(NullPointerException.class,
+                () -> new Level1Attempt(session, null, "a", "b", 1.0, 100.0, 100.0));
         assertThrows(IllegalArgumentException.class,
-                () -> new Level1Attempt(session, "same", "same", 1.0, 100.0, 100.0));
+                () -> new Level1Attempt(session, NO_HINTS, "same", "same", 1.0, 100.0, 100.0));
+    }
+
+    @Test
+    void advancingARealAttemptPublishesHintThroughRegisteredObserver()
+    {
+        final Level1Attempt attempt =
+                scenario.createAttempt(0.90 * scenario.circularSpeedMetresPerSecond());
+
+        assertTrue(attempt.hints().latestHint().isEmpty());
+
+        attempt.session().start();
+        attempt.session().advanceBy(attempt.session().observationIntervalSeconds());
+
+        assertEquals(
+                HintCategory.BELOW_CIRCULAR_SLIGHTLY,
+                attempt.hints().latestHint().orElseThrow().category());
     }
 }

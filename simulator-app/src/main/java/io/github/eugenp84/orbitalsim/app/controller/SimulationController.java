@@ -6,6 +6,9 @@ import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioAttemptNotAssessa
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioSession;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
+import io.github.eugenp84.orbitalsim.learning.scenario.Hint;
+import io.github.eugenp84.orbitalsim.learning.scenario.HintSource;
+import io.github.eugenp84.orbitalsim.learning.scenario.Level1Attempt;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -40,6 +43,7 @@ public final class SimulationController
     private ScenarioSession session;
     private double simulatedSecondsPerRealSecond;
     private double configuredSpeedMetresPerSecond;
+    private HintSource hints;
 
     /**
      * Creates a controller holding a fresh, not-yet-started attempt at the scenario's circular
@@ -213,9 +217,11 @@ public final class SimulationController
 
     private void installAttempt(final double speedMetresPerSecond)
     {
-        // createAttempt throws before the assignment completes if the attempt cannot be built,
-        // so a refused reconfiguration leaves session and speed unchanged.
-        this.session = scenario.createAttempt(speedMetresPerSecond).session();
+        // createAttempt throws before either assignment if the attempt cannot be built,
+        // so a refused reconfiguration leaves session, hints and speed unchanged.
+        final Level1Attempt attempt = scenario.createAttempt(speedMetresPerSecond);
+        this.session = attempt.session();
+        this.hints = attempt.hints();
         this.configuredSpeedMetresPerSecond = speedMetresPerSecond;
     }
 
@@ -224,5 +230,11 @@ public final class SimulationController
         final ScenarioLifecycleState current = session.state();
         return current == ScenarioLifecycleState.COMPLETED
                 || current == ScenarioLifecycleState.FAILED;
+    }
+
+    /** The current learner guidance, or empty if none has been inferred yet. */
+    public Optional<Hint> latestHint()
+    {
+        return hints.latestHint();
     }
 }

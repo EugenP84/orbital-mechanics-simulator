@@ -8,6 +8,7 @@ import io.github.eugenp84.orbitalsim.app.rendering.ViewTransform;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level1Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
+import io.github.eugenp84.orbitalsim.learning.scenario.Hint;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
@@ -104,6 +105,7 @@ public final class Main extends Application
     private Label elapsedLabel;
 
     private TrajectoryTrail trail;
+    private Label hintLabel;
 
     private VBox buildControlPanel()
     {
@@ -115,6 +117,7 @@ public final class Main extends Application
         });
 
         final Button resetButton = new Button("Reset");
+        hintLabel = new Label();
         resetButton.setOnAction(event ->
         {
             controller.reset();
@@ -159,8 +162,7 @@ public final class Main extends Application
         attemptRow.setAlignment(Pos.CENTER_LEFT);
 
         final Label timeRateValueLabel = new Label();
-        final double initialDaysPerSecond =
-                controller.simulatedSecondsPerRealSecond() / SECONDS_PER_DAY;
+        final double initialDaysPerSecond = controller.simulatedSecondsPerRealSecond() / SECONDS_PER_DAY;
         final Slider timeRateSlider = new Slider(
                 MIN_TIME_RATE_DAYS_PER_SECOND, MAX_TIME_RATE_DAYS_PER_SECOND, initialDaysPerSecond);
         timeRateSlider.setPrefWidth(TIME_RATE_SLIDER_WIDTH_PIXELS);
@@ -414,6 +416,19 @@ public final class Main extends Application
         }
     }
 
+    private static String hintTextFor(
+            final ScenarioLifecycleState state,
+            final Optional<Hint> hint)
+    {
+        final boolean attemptActive = state == ScenarioLifecycleState.RUNNING
+                || state == ScenarioLifecycleState.PAUSED;
+        if (!attemptActive || hint.isEmpty())
+        {
+            return "";
+        }
+        return "Hint: " + hint.get().message();
+    }
+
     private void updateControlStates()
     {
         final ScenarioLifecycleState current = controller.state();
@@ -422,6 +437,7 @@ public final class Main extends Application
         orbitalSpeedSlider.setDisable(!orbitalSpeedSelectable(current));
         stateLabel.setText(statusTextFor(current, controller.terminationReason()));
         elapsedLabel.setText(elapsedTextFor(controller.elapsedSimulatedSeconds()));
+        hintLabel.setText(hintTextFor(current, controller.latestHint()));
     }
 
     private void updateOrbitalSpeedLabel(final double fraction)
