@@ -1,14 +1,13 @@
 package io.github.eugenp84.orbitalsim.app.controller;
 
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
-import io.github.eugenp84.orbitalsim.learning.scenario.Level1Scenario;
-import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioAttemptNotAssessableException;
-import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
-import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioSession;
-import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
 import io.github.eugenp84.orbitalsim.learning.scenario.Hint;
 import io.github.eugenp84.orbitalsim.learning.scenario.HintSource;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level1Attempt;
+import io.github.eugenp84.orbitalsim.learning.scenario.Level1Scenario;
+import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioAttemptNotAssessableException;
+import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
+import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -17,51 +16,39 @@ import java.util.OptionalDouble;
 /**
  * Coordinates a running Level 1 scenario on behalf of the user interface.
  * <p>
- * This is the JavaFX-free application logic — lifecycle transitions, attempt configuration, reset,
- * and the presentation-speed conversion — so it can be unit-tested like every other layer.
- * The view calls these methods and reads the lifecycle state; it never drives the {@link ScenarioSession}
- * directly, so the session stays the sole advancement boundary (ADR-008 p.4).
+ * Lifecycle and presentation behaviour shared by every level — run/pause, wall-clock-to-simulated advancement, snapshot and lifecycle access, presentation speed — is delegated to a {@link ScenarioPlayer}.
+ * This controller adds only Level 1's configuration and pedagogy: building an attempt from a chosen orbital speed, exposing that speed relative to circular, and surfacing hints.
+ * It remains JavaFX-free and its public API is unchanged from before the {@code ScenarioPlayer} extraction, so the view and the existing tests are unaffected.
  * <p>
- * Presentation speed is a wall-clock-to-simulated multiplier and never changes the engine's fixed
- * numerical timestep (ADR-005 §8). Orbital speed is a different quantity entirely — the learner's
- * chosen initial tangential speed — which {@link #configureAttempt(double)} turns into a new attempt.
- * <p>
- * Reset and reconfiguration build a new attempt rather than rewinding the session, because the
- * session has no legitimate transition back from a started or terminal state (ADR-008 §3).
- * A reconfiguration that cannot be assessed is refused and the previous attempt left intact;
- * an assessable one replaces it atomically.
+ * Reset and reconfiguration build a new attempt rather than rewinding the session (ADR-008 p3);
+ * a reconfiguration that cannot be assessed is refused, leaving the previous attempt unchanged, because construction completes before any controller state is modified.
  *
  * @author Eugeniu PLATITA
  */
-public final class SimulationController
+public final class SimulationController implements ScenarioControls
 {
-    private static final double SECONDS_PER_DAY = 86_400.0;
-    private static final double DEFAULT_SIMULATED_SECONDS_PER_REAL_SECOND = 14.0 * SECONDS_PER_DAY;
-
     private final Level1Scenario scenario;
+    private final ScenarioPlayer player;
 
-    private ScenarioSession session;
-    private double simulatedSecondsPerRealSecond;
     private double configuredSpeedMetresPerSecond;
     private HintSource hints;
 
     /**
-     * Creates a controller holding a fresh, not-yet-started attempt at the scenario's circular
-     * speed, and the default presentation rate.
+     * Creates a controller holding a fresh, not-yet-started attempt at the scenario's circular speed, and the default presentation rate.
      *
      * @param scenario the Level 1 scenario used to build attempts; never null
      */
     public SimulationController(final Level1Scenario scenario)
     {
         this.scenario = Objects.requireNonNull(scenario, "scenario must not be null");
-        this.simulatedSecondsPerRealSecond = DEFAULT_SIMULATED_SECONDS_PER_REAL_SECOND;
-        installAttempt(scenario.circularSpeedMetresPerSecond());
+        final Level1Attempt attempt = scenario.createAttempt(scenario.circularSpeedMetresPerSecond());
+        this.player = new ScenarioPlayer(attempt.session());
+        this.hints = attempt.hints();
+        this.configuredSpeedMetresPerSecond = scenario.circularSpeedMetresPerSecond();
     }
 
     /**
-     * Advances by the simulated time corresponding to the given wall-clock interval, but only while
-     * running. The argument is validated independently of lifecycle state, and the derived duration
-     * is checked before it reaches the learning layer.
+     * Advances by the simulated time corresponding to the given wall-clock interval, but only while running.
      *
      * @param wallClockSeconds elapsed real time for this frame; non-negative and finite
      * @throws IllegalArgumentException if the argument is negative or non-finite, or if it and the
@@ -69,29 +56,12 @@ public final class SimulationController
      */
     public void advanceByWallClock(final double wallClockSeconds)
     {
-        if (!Double.isFinite(wallClockSeconds) || wallClockSeconds < 0.0)
-        {
-            throw new IllegalArgumentException(
-                    "wallClockSeconds must be non-negative and finite, was: " + wallClockSeconds);
-        }
-        if (session.state() != ScenarioLifecycleState.RUNNING)
-        {
-            return;
-        }
-        final double simulatedSeconds = wallClockSeconds * simulatedSecondsPerRealSecond;
-        if (!Double.isFinite(simulatedSeconds))
-        {
-            throw new IllegalArgumentException(
-                    "wall-clock interval and presentation speed produce a non-finite duration: "
-                            + wallClockSeconds + " * " + simulatedSecondsPerRealSecond);
-        }
-        session.advanceBy(simulatedSeconds);
+        player.advanceByWallClock(wallClockSeconds);
     }
 
     /**
-     * Builds a fresh, not-yet-started attempt at the given orbital speed and, only if it can be
-     * assessed, installs it. On refusal the previous attempt — and any progress it has made — is
-     * left untouched.
+     * Builds a fresh, not-yet-started attempt at the given orbital speed and, only if it can be assessed,
+     * installs it. On refusal the previous attempt — and any progress it has made — is left untouched.
      *
      * @param speedMetresPerSecond initial tangential speed; positive and finite
      * @return {@code CREATED} if built and installed, or {@code NOT_ASSESSABLE} if the resulting
@@ -102,8 +72,7 @@ public final class SimulationController
     {
         if (!Double.isFinite(speedMetresPerSecond) || speedMetresPerSecond <= 0.0)
         {
-            throw new IllegalArgumentException(
-                    "speedMetresPerSecond must be positive and finite, was: " + speedMetresPerSecond);
+            throw new IllegalArgumentException("speedMetresPerSecond must be positive and finite, was: " + speedMetresPerSecond);
         }
         try
         {
@@ -119,20 +88,7 @@ public final class SimulationController
     /** Applies the single run/pause/resume transition legal in the current state. */
     public void toggleRun()
     {
-        final ScenarioLifecycleState current = session.state();
-        if (current == ScenarioLifecycleState.NOT_STARTED)
-        {
-            session.start();
-        }
-        else if (current == ScenarioLifecycleState.RUNNING)
-        {
-            session.pause();
-        }
-        else if (current == ScenarioLifecycleState.PAUSED)
-        {
-            session.resume();
-        }
-        // COMPLETED and FAILED are terminal: no transition exists; Reset builds anew.
+        player.toggleRun();
     }
 
     /** Rebuilds a fresh attempt at the current orbital speed, discarding progress. */
@@ -149,18 +105,13 @@ public final class SimulationController
      */
     public void setSimulatedSecondsPerRealSecond(final double value)
     {
-        if (!Double.isFinite(value) || value <= 0.0)
-        {
-            throw new IllegalArgumentException(
-                    "simulated-seconds-per-real-second must be positive and finite, was: " + value);
-        }
-        this.simulatedSecondsPerRealSecond = value;
+        player.setSimulatedSecondsPerRealSecond(value);
     }
 
     /** Whether a run/pause/resume control should be offered; false only when terminated. */
     public boolean canToggleRun()
     {
-        return !isTerminated();
+        return player.canToggleRun();
     }
 
     /** The scenario's circular speed, the reference for the learner's input. */
@@ -179,62 +130,50 @@ public final class SimulationController
     }
 
     /**
-     * Simulated seconds elapsed since the current attempt started, or empty while not started — a
-     * real state (no baseline exists yet), not an error or a zero.
+     * Simulated seconds elapsed since the current attempt started, or empty while not started.
      */
     public OptionalDouble elapsedSimulatedSeconds()
     {
-        if (session.state() == ScenarioLifecycleState.NOT_STARTED)
-        {
-            return OptionalDouble.empty();
-        }
-        return OptionalDouble.of(session.elapsedScenarioSeconds());
-    }
-
-    /** The current presentation speed, in simulated seconds per real second. */
-    public double simulatedSecondsPerRealSecond()
-    {
-        return simulatedSecondsPerRealSecond;
-    }
-
-    /** The latest committed simulation state, for rendering. */
-    public SimulationSnapshot snapshot()
-    {
-        return session.snapshot();
-    }
-
-    /** The current scenario lifecycle state. */
-    public ScenarioLifecycleState state()
-    {
-        return session.state();
-    }
-
-    /** Why the scenario terminated, or empty if it has not terminated. */
-    public Optional<ScenarioTerminationReason> terminationReason()
-    {
-        return session.terminationReason();
-    }
-
-    private void installAttempt(final double speedMetresPerSecond)
-    {
-        // createAttempt throws before either assignment if the attempt cannot be built,
-        // so a refused reconfiguration leaves session, hints and speed unchanged.
-        final Level1Attempt attempt = scenario.createAttempt(speedMetresPerSecond);
-        this.session = attempt.session();
-        this.hints = attempt.hints();
-        this.configuredSpeedMetresPerSecond = speedMetresPerSecond;
-    }
-
-    private boolean isTerminated()
-    {
-        final ScenarioLifecycleState current = session.state();
-        return current == ScenarioLifecycleState.COMPLETED
-                || current == ScenarioLifecycleState.FAILED;
+        return player.elapsedSimulatedSeconds();
     }
 
     /** The current learner guidance, or empty if none has been inferred yet. */
     public Optional<Hint> latestHint()
     {
         return hints.latestHint();
+    }
+
+    /** The current presentation speed, in simulated seconds per real second. */
+    public double simulatedSecondsPerRealSecond()
+    {
+        return player.simulatedSecondsPerRealSecond();
+    }
+
+    /** The latest committed simulation state, for rendering. */
+    public SimulationSnapshot snapshot()
+    {
+        return player.snapshot();
+    }
+
+    /** The current scenario lifecycle state. */
+    public ScenarioLifecycleState state()
+    {
+        return player.state();
+    }
+
+    /** Why the scenario terminated, or empty if it has not terminated. */
+    public Optional<ScenarioTerminationReason> terminationReason()
+    {
+        return player.terminationReason();
+    }
+
+    private void installAttempt(final double speedMetresPerSecond)
+    {
+        // Attempt construction occurs before any controller state is modified, so a construction or
+        // assessability refusal leaves the previously installed attempt, hints and speed unchanged.
+        final Level1Attempt attempt = scenario.createAttempt(speedMetresPerSecond);
+        player.install(attempt.session());
+        this.hints = attempt.hints();
+        this.configuredSpeedMetresPerSecond = speedMetresPerSecond;
     }
 }
