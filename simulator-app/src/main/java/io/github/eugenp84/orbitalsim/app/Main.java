@@ -2,53 +2,46 @@ package io.github.eugenp84.orbitalsim.app;
 
 import io.github.eugenp84.orbitalsim.app.controller.AttemptCreationResult;
 import io.github.eugenp84.orbitalsim.app.controller.SimulationController;
-import io.github.eugenp84.orbitalsim.app.rendering.SimulationRenderer;
 import io.github.eugenp84.orbitalsim.app.rendering.TrajectoryTrail;
 import io.github.eugenp84.orbitalsim.app.rendering.ViewTransform;
+import io.github.eugenp84.orbitalsim.core.math.Vector3D;
+import io.github.eugenp84.orbitalsim.core.model.CelestialBodyType;
+import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
+import io.github.eugenp84.orbitalsim.learning.scenario.Hint;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level1Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
-import io.github.eugenp84.orbitalsim.learning.scenario.Hint;
 
-import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.scene.paint.Color;
 
 import java.util.Locale;
 import java.util.Optional;
-import java.util.OptionalDouble;
-import io.github.eugenp84.orbitalsim.core.math.Vector3D;
-import io.github.eugenp84.orbitalsim.core.model.CelestialBodyType;
-import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
 
 /**
- * JavaFX entry point for the orbital mechanics simulator.
+ * JavaFX entry point for the orbital mechanics simulator (Level 1 screen).
  * <p>
- * This increment adds the orbital-speed control — the principal Level 1 learner input — on a two-row
- * control panel above the canvas: the attempt row (orbital speed, Start/Pause, Reset) and the
- * playback/feedback row (time rate, status, integrator, elapsed).
+ * The generic presentation — the animation loop, trajectory trail, rendering, and the common controls
+ * (run/pause, reset, time rate, status, integrator, elapsed) — lives in {@link SimulationViewCore}.
+ * This class supplies only Level 1's own controls: the orbital-speed slider and the hint row, wired to
+ * a {@link SimulationController}. It places the core's exposed buttons and playback row into the Level
+ * 1 layout, so the shared core drives the loop while the level-specific interaction stays here.
  * <p>
  * The orbital-speed slider owns a single contract: whenever it is enabled, its value is the speed of
  * the currently configured, not-yet-started attempt. It commits a new attempt when a value settles
- * (drag end, track click or keyboard), not on every intermediate drag event, and only when the settled fraction actually differs from the installed one.
- * The learner-facing resolution is fixed at {@code SPEED_FRACTION_STEP};
- * quantisation to that step is authoritative and independent of the JavaFX slider's own snapping,
- * so thumb, label and controller always represent the same value.
- * Start is therefore a pure lifecycle action — it starts the attempt the slider already represents.
- * <p>
- * Advancement and rendering run on the JavaFX Application Thread; the frame loop runs continuously and advances only while running.
+ * (drag end, track click or keyboard), not on every intermediate drag event, and only when the settled
+ * fraction actually differs from the installed one. Quantisation to {@code SPEED_FRACTION_STEP} is
+ * authoritative and independent of the JavaFX slider's own snapping, so thumb, label and controller
+ * always represent the same value. Start is a pure lifecycle action.
  *
  * @author Eugeniu PLATITA
  */
@@ -60,16 +53,6 @@ public final class Main extends Application
     private static final double CANVAS_WIDTH_PIXELS = 900.0;
     private static final double CANVAS_HEIGHT_PIXELS = 700.0;
     private static final double VIEW_MARGIN_FACTOR = 1.15;
-
-    private static final double NANOS_PER_SECOND = 1_000_000_000.0;
-
-    // A stalled frame, debugger or GC pause must not become one huge simulated-time request. Excess
-    // wall-clock time is discarded, not replayed. A presentation safeguard, not a physics rule.
-    private static final double MAX_FRAME_DELTA_SECONDS = 1.0 / 30.0;
-
-    private static final double SECONDS_PER_DAY = 86_400.0;
-    private static final double MIN_TIME_RATE_DAYS_PER_SECOND = 1.0;
-    private static final double MAX_TIME_RATE_DAYS_PER_SECOND = 60.0;
 
     // The orbital-speed slider spans 0.5-1.5 x circular: it crosses the escape threshold at
     // sqrt(2) ~ 1.414, so one control exposes bound ellipses, the circular target and unbound escape.
@@ -89,43 +72,21 @@ public final class Main extends Application
     private static final double CONTROL_BAR_SPACING_PIXELS = 10.0;
     private static final double CONTROL_ROW_SPACING_PIXELS = 6.0;
     private static final double CONTROL_PANEL_PADDING_PIXELS = 10.0;
-    private static final double TIME_RATE_SLIDER_WIDTH_PIXELS = 160.0;
     private static final double ORBITAL_SPEED_SLIDER_WIDTH_PIXELS = 280.0;
 
-    // The minimum spacing is approximately 1/240 of the reference orbital radius.
-    // The point cap comfortably retains at least one visually smooth L1 trajectory at the supported presentation rates.
+    // The minimum spacing is approximately 1/240 of the reference orbital radius. The point cap
+    // comfortably retains at least one visually smooth L1 trajectory at the supported presentation rates.
     private static final int TRAIL_MAXIMUM_POINTS = 1_500;
     private static final double TRAIL_SEGMENT_DIVISOR = 240.0;
 
-    private AnimationTimer animationTimer;
     private SimulationController controller;
-    private Button runPauseButton;
+    private SimulationViewCore core;
     private Slider orbitalSpeedSlider;
     private Label orbitalSpeedValueLabel;
-    private Label stateLabel;
-    private Label elapsedLabel;
-
-    private TrajectoryTrail trail;
     private Label hintLabel;
 
     private VBox buildControlPanel()
     {
-        runPauseButton = new Button();
-        runPauseButton.setOnAction(event ->
-        {
-            controller.toggleRun();
-            updateControlStates();
-        });
-
-        final Button resetButton = new Button("Reset");
-
-        resetButton.setOnAction(event ->
-        {
-            controller.reset();
-            trail.clear();
-            updateControlStates();
-        });
-
         orbitalSpeedValueLabel = new Label();
         orbitalSpeedSlider = new Slider(MIN_SPEED_FRACTION, MAX_SPEED_FRACTION, DEFAULT_SPEED_FRACTION);
         orbitalSpeedSlider.setPrefWidth(ORBITAL_SPEED_SLIDER_WIDTH_PIXELS);
@@ -158,41 +119,16 @@ public final class Main extends Application
                 new Label("Initial orbital speed:"),
                 orbitalSpeedSlider,
                 orbitalSpeedValueLabel,
-                runPauseButton,
-                resetButton);
+                core.runPauseButton(),
+                core.resetButton());
         attemptRow.setAlignment(Pos.CENTER_LEFT);
 
-        final Label timeRateValueLabel = new Label();
-        final double initialDaysPerSecond = controller.simulatedSecondsPerRealSecond() / SECONDS_PER_DAY;
-        final Slider timeRateSlider = new Slider(
-                MIN_TIME_RATE_DAYS_PER_SECOND, MAX_TIME_RATE_DAYS_PER_SECOND, initialDaysPerSecond);
-        timeRateSlider.setPrefWidth(TIME_RATE_SLIDER_WIDTH_PIXELS);
-        timeRateSlider.valueProperty().addListener((observable, oldValue, newValue) ->
-        {
-            final double daysPerSecond = newValue.doubleValue();
-            controller.setSimulatedSecondsPerRealSecond(daysPerSecond * SECONDS_PER_DAY);
-            timeRateValueLabel.setText(formatTimeRate(daysPerSecond));
-        });
-        timeRateValueLabel.setText(formatTimeRate(initialDaysPerSecond));
-
-        stateLabel = new Label();
-        elapsedLabel = new Label();
         hintLabel = new Label();
-
-        final HBox playbackRow = new HBox(
-                CONTROL_BAR_SPACING_PIXELS,
-                new Label("Time rate:"),
-                timeRateSlider,
-                timeRateValueLabel,
-                stateLabel,
-                new Label(INTEGRATOR_LABEL),
-                elapsedLabel);
-        playbackRow.setAlignment(Pos.CENTER_LEFT);
-
         final HBox hintRow = new HBox(CONTROL_BAR_SPACING_PIXELS, hintLabel);
         hintRow.setAlignment(Pos.CENTER_LEFT);
 
-        final VBox controlPanel = new VBox(CONTROL_ROW_SPACING_PIXELS, attemptRow, playbackRow, hintRow);
+        final VBox controlPanel = new VBox(
+                CONTROL_ROW_SPACING_PIXELS, attemptRow, core.playbackRow(), hintRow);
         controlPanel.setPadding(new Insets(CONTROL_PANEL_PADDING_PIXELS));
         return controlPanel;
     }
@@ -213,79 +149,24 @@ public final class Main extends Application
             {
                 orbitalSpeedSlider.setValue(fraction);
             }
-            trail.clear();
-            updateControlStates();
+            core.afterAttemptReplaced();
             return;
         }
 
         orbitalSpeedSlider.setValue(controller.configuredSpeedFractionOfCircular());
     }
 
-    private AnimationTimer createAnimationTimer(
-            final SimulationRenderer renderer,
-            final GraphicsContext graphics,
-            final ViewTransform transform)
+    private static String hintTextFor(
+            final ScenarioLifecycleState state,
+            final Optional<Hint> hint)
     {
-        return new AnimationTimer()
+        final boolean attemptActive = state == ScenarioLifecycleState.RUNNING
+                || state == ScenarioLifecycleState.PAUSED;
+        if (!attemptActive || hint.isEmpty())
         {
-            private long previousFrameNanos;
-
-            @Override
-            public void handle(final long now)
-            {
-                if (previousFrameNanos == 0L)
-                {
-                    previousFrameNanos = now;
-                    return;
-                }
-
-                final long elapsedNanos = now - previousFrameNanos;
-                previousFrameNanos = now;
-                if (elapsedNanos <= 0L)
-                {
-                    return;
-                }
-
-                final double elapsedWallClockSeconds = elapsedNanos / NANOS_PER_SECOND;
-                final double boundedWallClockSeconds =
-                        Math.min(elapsedWallClockSeconds, MAX_FRAME_DELTA_SECONDS);
-
-                final boolean wasRunning =
-                        controller.state() == ScenarioLifecycleState.RUNNING;
-
-                if (wasRunning)
-                {
-                    planetPositionOf(controller.snapshot()).ifPresent(trail::record);
-                }
-
-                controller.advanceByWallClock(boundedWallClockSeconds);
-
-                final SimulationSnapshot snapshot = controller.snapshot();
-                if (wasRunning)
-                {
-                    planetPositionOf(snapshot).ifPresent(trail::record);
-                }
-
-                renderer.render(graphics, snapshot, transform, trail.points());
-                updateControlStates();
-            }
-        };
-    }
-    private static String elapsedTextFor(final OptionalDouble elapsedSeconds)
-    {
-        if (elapsedSeconds.isEmpty())
-        {
-            return "Elapsed: —";
+            return "";
         }
-        return String.format(
-                Locale.ROOT,
-                "Elapsed: %.1f days",
-                elapsedSeconds.getAsDouble() / SECONDS_PER_DAY);
-    }
-
-    private static String formatTimeRate(final double daysPerSecond)
-    {
-        return String.format(Locale.ROOT, "%.0f days/s", daysPerSecond);
+        return "Hint: " + hint.get().message();
     }
 
     private static String learnerTextFor(final ScenarioTerminationReason reason)
@@ -296,16 +177,6 @@ public final class Main extends Application
             case POLICY_FAILURE -> "the orbit did not meet the level criteria";
             case ASSESSMENT_INVALID -> "the orbit could not be assessed reliably";
             case SIMULATION_BREAKDOWN -> "the simulation became numerically unstable";
-        };
-    }
-
-    private static Color statusColourFor(final ScenarioLifecycleState state)
-    {
-        return switch (state)
-        {
-            case COMPLETED -> Color.web("#4caf50");
-            case FAILED -> Color.web("#e05252");
-            case NOT_STARTED, RUNNING, PAUSED -> Color.web("#c7ccd6");
         };
     }
 
@@ -348,14 +219,11 @@ public final class Main extends Application
         return Math.round(fraction / SPEED_FRACTION_STEP) * SPEED_FRACTION_STEP;
     }
 
-    private static String runPauseLabelFor(final ScenarioLifecycleState state)
+    private void refreshLevelControls()
     {
-        return switch (state)
-        {
-            case NOT_STARTED, COMPLETED, FAILED -> "Start";
-            case RUNNING -> "Pause";
-            case PAUSED -> "Resume";
-        };
+        final ScenarioLifecycleState current = controller.state();
+        orbitalSpeedSlider.setDisable(!orbitalSpeedSelectable(current));
+        hintLabel.setText(hintTextFor(current, controller.latestHint()));
     }
 
     /**
@@ -369,7 +237,9 @@ public final class Main extends Application
     {
         final Level1Scenario scenario = new Level1Scenario();
         controller = new SimulationController(scenario);
-        trail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, scenario.orbitalRadiusMetres() / TRAIL_SEGMENT_DIVISOR);
+
+        final TrajectoryTrail trail = new TrajectoryTrail(
+                TRAIL_MAXIMUM_POINTS, scenario.orbitalRadiusMetres() / TRAIL_SEGMENT_DIVISOR);
 
         final ViewTransform transform = ViewTransform.fitting(
                 CANVAS_WIDTH_PIXELS,
@@ -379,44 +249,27 @@ public final class Main extends Application
                 scenario.orbitalRadiusMetres() * VIEW_MARGIN_FACTOR);
 
         final Canvas canvas = new Canvas(CANVAS_WIDTH_PIXELS, CANVAS_HEIGHT_PIXELS);
-        final GraphicsContext graphics = canvas.getGraphicsContext2D();
-        final SimulationRenderer renderer = new SimulationRenderer();
+
+        core = new SimulationViewCore(
+                controller,
+                canvas,
+                transform,
+                trail,
+                this::refreshLevelControls,
+                Main::learnerTextFor,
+                Main::planetPositionOf,
+                INTEGRATOR_LABEL);
 
         final BorderPane root = new BorderPane();
         root.setTop(buildControlPanel());
         root.setCenter(canvas);
 
-        renderer.render(graphics, controller.snapshot(), transform, trail.points());
-        updateControlStates();
-
         stage.setScene(new Scene(root));
         stage.setTitle(WINDOW_TITLE);
         stage.show();
 
-        animationTimer = createAnimationTimer(renderer, graphics, transform);
-        animationTimer.start();
-    }
-    private static String statusTextFor(
-            final ScenarioLifecycleState state,
-            final Optional<ScenarioTerminationReason> reason)
-    {
-        if (reason.isEmpty())
-        {
-            return "Status: " + statusWordFor(state);
-        }
-        return "Status: " + statusWordFor(state) + " — " + learnerTextFor(reason.get());
-    }
-
-    private static String statusWordFor(final ScenarioLifecycleState state)
-    {
-        return switch (state)
-        {
-            case NOT_STARTED -> "Ready";
-            case RUNNING -> "Running";
-            case PAUSED -> "Paused";
-            case COMPLETED -> "Completed";
-            case FAILED -> "Failed";
-        };
+        core.initialiseView();
+        core.startLoop();
     }
 
     /**
@@ -425,47 +278,16 @@ public final class Main extends Application
     @Override
     public void stop()
     {
-        if (animationTimer != null)
+        if (core != null)
         {
-            animationTimer.stop();
+            core.stopLoop();
         }
-    }
-
-    private static String hintTextFor(
-            final ScenarioLifecycleState state,
-            final Optional<Hint> hint)
-    {
-        final boolean attemptActive = state == ScenarioLifecycleState.RUNNING
-                || state == ScenarioLifecycleState.PAUSED;
-        if (!attemptActive || hint.isEmpty())
-        {
-            return "";
-        }
-        return "Hint: " + hint.get().message();
-    }
-
-    private void updateControlStates()
-    {
-        final ScenarioLifecycleState current = controller.state();
-        runPauseButton.setText(runPauseLabelFor(current));
-        runPauseButton.setDisable(!controller.canToggleRun());
-        orbitalSpeedSlider.setDisable(!orbitalSpeedSelectable(current));
-        stateLabel.setText(statusTextFor(current, controller.terminationReason()));
-        stateLabel.setTextFill(statusColourFor(current));
-        elapsedLabel.setText(elapsedTextFor(controller.elapsedSimulatedSeconds()));
-        hintLabel.setText(hintTextFor(current, controller.latestHint()));
-
-
-
     }
 
     private void updateOrbitalSpeedLabel(final double fraction)
     {
         final double quantised = quantiseSpeedFraction(fraction);
-        final double kilometresPerSecond =
-                quantised * controller.circularSpeedMetresPerSecond() / METRES_PER_SECOND_IN_KILOMETRES;
-        orbitalSpeedValueLabel.setText(
-                String.format(Locale.ROOT, "%.2f × circular (%.1f km/s)", quantised, kilometresPerSecond));
+        final double kilometresPerSecond = quantised * controller.circularSpeedMetresPerSecond() / METRES_PER_SECOND_IN_KILOMETRES;
+        orbitalSpeedValueLabel.setText(String.format(Locale.ROOT, "%.2f × circular (%.1f km/s)", quantised, kilometresPerSecond));
     }
-
 }
