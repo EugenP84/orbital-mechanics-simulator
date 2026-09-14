@@ -11,8 +11,7 @@ import java.util.Objects;
 /**
  * A bounded, presentation-only history of a body's recent world positions, for drawing its path.
  * <p>
- * This is app-layer state with no bearing on the simulation: the physics,
- * the engine and the learning layer never see it.
+ * This is app-layer state with no bearing on the simulation: the physics, the engine and the learning layer never see it.
  * Points are held in world metres, so the trail is defined physically and renders correctly whatever view transform is applied to it.
  * <p>
  * Two bounds keep it finite and legible. A point is recorded only once the body has moved at least a
@@ -28,7 +27,7 @@ import java.util.Objects;
 public final class TrajectoryTrail
 {
     private final int maximumPoints;
-    private final double minimumSegmentSquaredMetres;
+    private double minimumSegmentSquaredMetres;
     private final Deque<Vector3D> points = new ArrayDeque<>();
 
     private Vector3D lastRecorded;
@@ -46,11 +45,10 @@ public final class TrajectoryTrail
         }
         if (!Double.isFinite(minimumSegmentMetres) || minimumSegmentMetres <= 0.0)
         {
-            throw new IllegalArgumentException(
-                    "minimumSegmentMetres must be positive and finite, was: " + minimumSegmentMetres);
+            throw new IllegalArgumentException("minimumSegmentMetres must be positive and finite, was: " + minimumSegmentMetres);
         }
         this.maximumPoints = maximumPoints;
-        this.minimumSegmentSquaredMetres = minimumSegmentMetres * minimumSegmentMetres;
+        this.minimumSegmentSquaredMetres = squaredSegment(minimumSegmentMetres);
     }
 
     /** Removes every recorded point, so the next recording starts a fresh path. */
@@ -93,5 +91,32 @@ public final class TrajectoryTrail
         final double dx = a.x() - b.x();
         final double dy = a.y() - b.y();
         return dx * dx + dy * dy;
+    }
+
+    /**
+     * Changes the minimum distance the body must move before another point is recorded, and clears the trail so the new spacing applies from a clean start.
+     * Used when a scenario's characteristic scale changes — for example when the learner changes the orbital distance
+     * so the trail's spatial density stays appropriate to the current orbit.
+     *
+     * @param minimumSegmentMetres the new minimum segment distance in metres; positive and finite, and small enough that its square is finite
+     * @throws IllegalArgumentException if the value is not positive and finite, or its square overflows
+     */
+    public void setMinimumSegmentMetres(final double minimumSegmentMetres)
+    {
+        this.minimumSegmentSquaredMetres = squaredSegment(minimumSegmentMetres);
+        clear();
+    }
+
+    private static double squaredSegment(final double minimumSegmentMetres)
+    {
+        if (!Double.isFinite(minimumSegmentMetres) || minimumSegmentMetres <= 0.0) {
+            throw new IllegalArgumentException("minimumSegmentMetres must be positive and finite, was: " + minimumSegmentMetres);
+        }
+        final double squared = minimumSegmentMetres * minimumSegmentMetres;
+        if (!Double.isFinite(squared))
+        {
+            throw new IllegalArgumentException("minimumSegmentMetres is too large; its square overflows: " + minimumSegmentMetres);
+        }
+        return squared;
     }
 }

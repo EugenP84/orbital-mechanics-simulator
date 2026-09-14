@@ -91,4 +91,26 @@ class TrajectoryTrailTest
         assertThrows(IllegalArgumentException.class, () -> new TrajectoryTrail(100, 0.0));
         assertThrows(IllegalArgumentException.class, () -> new TrajectoryTrail(100, Double.NaN));
     }
+
+    @Test
+    void setMinimumSegmentMetresRejectsBadValuesAndClears()
+    {
+        final TrajectoryTrail trail = new TrajectoryTrail(100, MIN_SEGMENT);
+        trail.record(new Vector3D(0.0, 0.0, 0.0));
+        trail.record(new Vector3D(2.0 * MIN_SEGMENT, 0.0, 0.0));
+
+        trail.setMinimumSegmentMetres(2.0 * MIN_SEGMENT);
+        assertTrue(trail.points().isEmpty());
+
+        assertThrows(IllegalArgumentException.class, () -> trail.setMinimumSegmentMetres(0.0));
+        assertThrows(IllegalArgumentException.class, () -> trail.setMinimumSegmentMetres(Double.NaN));
+    }
+
+    @Test
+    void setMinimumSegmentMetresRejectsAnOverflowingSquare()
+    {
+        final TrajectoryTrail trail = new TrajectoryTrail(100, MIN_SEGMENT);
+        assertThrows(IllegalArgumentException.class,
+                () -> trail.setMinimumSegmentMetres(Double.MAX_VALUE));
+    }
 }
