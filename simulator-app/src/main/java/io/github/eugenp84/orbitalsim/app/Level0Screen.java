@@ -18,6 +18,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
@@ -92,7 +93,9 @@ public final class Level0Screen implements LevelScreen
     private final Level0Controller controller;
     private final TrajectoryTrail trail;
     private final SimulationViewCore core;
-    private final Parent root;
+    //private final Parent root;
+    private final Parent simulationRegion;
+    private final Parent controlsRegion;
 
     private Slider massSlider;
     private Slider radiusSlider;
@@ -126,10 +129,8 @@ public final class Level0Screen implements LevelScreen
                 Level0Screen::planetPositionOf,
                 INTEGRATOR_LABEL);
 
-        final BorderPane pane = new BorderPane();
-        pane.setTop(buildControlPanel());
-        pane.setCenter(canvas);
-        this.root = pane;
+        this.simulationRegion = new StackPane(canvas);
+        this.controlsRegion = buildControlPanel();
     }
 
     @Override
@@ -361,8 +362,14 @@ public final class Level0Screen implements LevelScreen
     }
 
     @Override
-    public Parent view()
+    public Parent controlsView()
     {
-        return root;
+        return controlsRegion;
+    }
+
+    @Override
+    public Parent simulationView()
+    {
+        return simulationRegion;
     }
 }

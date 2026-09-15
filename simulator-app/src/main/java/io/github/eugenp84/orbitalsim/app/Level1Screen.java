@@ -18,25 +18,26 @@ import javafx.scene.Parent;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
-import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 import java.util.Locale;
 import java.util.Optional;
 
 /**
- * The Level 1 screen: the principal learner input is the orbital-speed slider, with an adaptive hint row, wired to a {@link SimulationController}.
+ * The Level 1 screen: the principal learner input is the orbital-speed slider, with an adaptive hint,
+ * wired to a {@link SimulationController}.
  * <p>
- * The generic presentation — the animation loop, trajectory trail, rendering, and the common controls
- * (run/pause, reset, time rate, status, integrator, elapsed) — lives in {@link SimulationViewCore}.
- * This screen supplies only Level 1's own controls and places the core's exposed buttons and playback row into the Level 1 layout.
+ * The generic presentation lives in {@link SimulationViewCore}. This screen supplies Level 1's own
+ * controls, and exposes two regions the host composes: a simulation region (the canvas) and a
+ * vertical controls region (orbital-speed control, Start/Reset, hint, and the shared playback row).
  * <p>
- * The orbital-speed slider owns a single contract: whenever it is enabled, its value is the speed of the currently configured, not-yet-started attempt.
- * It commits a new attempt when a value settles (drag end, track click or keyboard),
- * not on every intermediate drag event, and only when the settled fraction actually differs from the installed one.
- * Quantisation to {@code SPEED_FRACTION_STEP} is authoritative and independent of the JavaFX slider's own snapping,
- * so thumb, label and controller always represent the same value. Start is a pure lifecycle action.
+ * The orbital-speed slider owns a single contract: whenever it is enabled, its value is the speed of
+ * the currently configured, not-yet-started attempt. It commits a new attempt when a value settles
+ * (drag end, track click or keyboard), not on every intermediate drag event, and only when the settled
+ * fraction actually differs from the installed one. Quantisation to {@code SPEED_FRACTION_STEP} is
+ * authoritative and independent of the JavaFX slider's own snapping. Start is a pure lifecycle action.
  *
  * @author Eugeniu PLATITA
  */
@@ -48,14 +49,14 @@ public final class Level1Screen implements LevelScreen
     private static final double CANVAS_HEIGHT_PIXELS = 700.0;
     private static final double VIEW_MARGIN_FACTOR = 1.15;
 
-    // The orbital-speed slider spans 0.5-1.5 x circular: it crosses the escape threshold at sqrt(2) ~ 1.414,
-    // so one control exposes bound ellipses, the circular target and unbound escape.
+    // The orbital-speed slider spans 0.5-1.5 x circular: it crosses the escape threshold at
+    // sqrt(2) ~ 1.414, so one control exposes bound ellipses, the circular target and unbound escape.
     private static final double MIN_SPEED_FRACTION = 0.5;
     private static final double MAX_SPEED_FRACTION = 1.5;
     private static final double DEFAULT_SPEED_FRACTION = 1.0;
 
-    // The learner-facing resolution of the orbital-speed control.
-    // Quantising to this step is the authoritative configuration rule; the JavaFX slider's own snapping only assists the feel.
+    // The learner-facing resolution of the orbital-speed control. Quantising to this step is the
+    // authoritative configuration rule; the JavaFX slider's own snapping only assists the feel.
     private static final double SPEED_FRACTION_STEP = 0.01;
 
     // Smaller than one quantisation step, so it absorbs floating-point noise between values that
@@ -66,7 +67,7 @@ public final class Level1Screen implements LevelScreen
     private static final double CONTROL_BAR_SPACING_PIXELS = 10.0;
     private static final double CONTROL_ROW_SPACING_PIXELS = 6.0;
     private static final double CONTROL_PANEL_PADDING_PIXELS = 10.0;
-    private static final double ORBITAL_SPEED_SLIDER_WIDTH_PIXELS = 280.0;
+    private static final double ORBITAL_SPEED_SLIDER_WIDTH_PIXELS = 260.0;
 
     // The minimum spacing is approximately 1/240 of the reference orbital radius. The point cap
     // comfortably retains at least one visually smooth L1 trajectory at the supported presentation rates.
@@ -75,19 +76,21 @@ public final class Level1Screen implements LevelScreen
 
     private final SimulationController controller;
     private final SimulationViewCore core;
-    private final Parent root;
+    private final Parent simulationRegion;
+    private final Parent controlsRegion;
 
     private Slider orbitalSpeedSlider;
     private Label orbitalSpeedValueLabel;
     private Label hintLabel;
 
-    /** Builds the Level 1 screen: its controller, view core, control panel and canvas. */
+    /** Builds the Level 1 screen: its controller, view core, and the simulation and controls regions. */
     public Level1Screen()
     {
         final Level1Scenario scenario = new Level1Scenario();
         this.controller = new SimulationController(scenario);
 
-        final TrajectoryTrail trail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, scenario.orbitalRadiusMetres() / TRAIL_SEGMENT_DIVISOR);
+        final TrajectoryTrail trail = new TrajectoryTrail(
+                TRAIL_MAXIMUM_POINTS, scenario.orbitalRadiusMetres() / TRAIL_SEGMENT_DIVISOR);
 
         final ViewTransform transform = ViewTransform.fitting(
                 CANVAS_WIDTH_PIXELS,
@@ -108,10 +111,8 @@ public final class Level1Screen implements LevelScreen
                 Level1Screen::planetPositionOf,
                 INTEGRATOR_LABEL);
 
-        final BorderPane pane = new BorderPane();
-        pane.setTop(buildControlPanel());
-        pane.setCenter(canvas);
-        this.root = pane;
+        this.simulationRegion = new StackPane(canvas);
+        this.controlsRegion = buildControlsPanel();
     }
 
     @Override
@@ -121,7 +122,7 @@ public final class Level1Screen implements LevelScreen
         core.startLoop();
     }
 
-    private VBox buildControlPanel()
+    private VBox buildControlsPanel()
     {
         orbitalSpeedValueLabel = new Label();
         orbitalSpeedSlider = new Slider(MIN_SPEED_FRACTION, MAX_SPEED_FRACTION, DEFAULT_SPEED_FRACTION);
@@ -131,8 +132,6 @@ public final class Level1Screen implements LevelScreen
         orbitalSpeedSlider.setMinorTickCount(0);
         orbitalSpeedSlider.setSnapToTicks(true);
 
-        // Live label feedback on every value change; commit a new attempt only once the value has
-        // settled (drag end, track click or keyboard), so a drag does not build discarded attempts.
         orbitalSpeedSlider.valueProperty().addListener((observable, oldValue, newValue) ->
         {
             updateOrbitalSpeedLabel(newValue.doubleValue());
@@ -150,22 +149,28 @@ public final class Level1Screen implements LevelScreen
         });
         updateOrbitalSpeedLabel(orbitalSpeedSlider.getValue());
 
-        final HBox attemptRow = new HBox(
+        final HBox speedRow = new HBox(
                 CONTROL_BAR_SPACING_PIXELS,
                 new Label("Initial orbital speed:"),
-                orbitalSpeedSlider,
-                orbitalSpeedValueLabel,
-                core.runPauseButton(),
-                core.resetButton());
-        attemptRow.setAlignment(Pos.CENTER_LEFT);
+                orbitalSpeedSlider);
+        speedRow.setAlignment(Pos.CENTER_LEFT);
+
+        final HBox buttonRow = new HBox(
+                CONTROL_BAR_SPACING_PIXELS, core.runPauseButton(), core.resetButton());
+        buttonRow.setAlignment(Pos.CENTER_LEFT);
 
         hintLabel = new Label();
-        final HBox hintRow = new HBox(CONTROL_BAR_SPACING_PIXELS, hintLabel);
-        hintRow.setAlignment(Pos.CENTER_LEFT);
+        hintLabel.setWrapText(true);
 
-        final VBox controlPanel = new VBox(CONTROL_ROW_SPACING_PIXELS, attemptRow, core.playbackRow(), hintRow);
-        controlPanel.setPadding(new Insets(CONTROL_PANEL_PADDING_PIXELS));
-        return controlPanel;
+        final VBox controlsPanel = new VBox(
+                CONTROL_ROW_SPACING_PIXELS,
+                speedRow,
+                orbitalSpeedValueLabel,
+                buttonRow,
+                hintLabel,
+                core.playbackRow());
+        controlsPanel.setPadding(new Insets(CONTROL_PANEL_PADDING_PIXELS));
+        return controlsPanel;
     }
 
     private void commitSelectedOrbitalSpeed()
@@ -189,6 +194,12 @@ public final class Level1Screen implements LevelScreen
         }
 
         orbitalSpeedSlider.setValue(controller.configuredSpeedFractionOfCircular());
+    }
+
+    @Override
+    public Parent controlsView()
+    {
+        return controlsRegion;
     }
 
     @Override
@@ -223,8 +234,6 @@ public final class Level1Screen implements LevelScreen
 
     private static boolean orbitalSpeedSelectable(final ScenarioLifecycleState state)
     {
-        // The initial condition may only be chosen before an attempt runs or after it has finished;
-        // it is locked while running or paused, since changing it means a new attempt.
         return state == ScenarioLifecycleState.NOT_STARTED
                 || state == ScenarioLifecycleState.COMPLETED
                 || state == ScenarioLifecycleState.FAILED;
@@ -257,16 +266,18 @@ public final class Level1Screen implements LevelScreen
         hintLabel.setText(hintTextFor(current, controller.latestHint()));
     }
 
+    @Override
+    public Parent simulationView()
+    {
+        return simulationRegion;
+    }
+
     private void updateOrbitalSpeedLabel(final double fraction)
     {
         final double quantised = quantiseSpeedFraction(fraction);
-        final double kilometresPerSecond = quantised * controller.circularSpeedMetresPerSecond() / METRES_PER_SECOND_IN_KILOMETRES;
-        orbitalSpeedValueLabel.setText(String.format(Locale.ROOT, "%.2f × circular (%.1f km/s)", quantised, kilometresPerSecond));
-    }
-
-    @Override
-    public Parent view()
-    {
-        return root;
+        final double kilometresPerSecond =
+                quantised * controller.circularSpeedMetresPerSecond() / METRES_PER_SECOND_IN_KILOMETRES;
+        orbitalSpeedValueLabel.setText(
+                String.format(Locale.ROOT, "%.2f × circular (%.1f km/s)", quantised, kilometresPerSecond));
     }
 }

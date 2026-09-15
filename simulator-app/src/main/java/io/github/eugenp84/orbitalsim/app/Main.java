@@ -4,10 +4,12 @@ import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Separator;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.util.function.Supplier;
@@ -15,31 +17,37 @@ import java.util.function.Supplier;
 /**
  * JavaFX entry point and host for the orbital mechanics simulator.
  * <p>
- * The host owns the window, a thin level-switch bar, and the currently shown {@link LevelScreen}.
- * It is deliberately thin: each level builds its own controls, view core and animation loop.
- * the host only places the active screen in the window, drives its presentation lifecycle, and swaps screens on a level change.
- * Screens are rebuilt fresh on each switch — a screen is a disposable view, and no cross-level state is carried through it.
- * Any future learner-created-body continuity will be a model-layer concern, not screen state.
- * The two-button switch is a placeholder for a later side navigation panel.
+ * The host owns the window shell and persistent level navigation. Each {@link LevelScreen} supplies a
+ * simulation region and a controls region; the host places the simulation region in the centre and,
+ * on the right, a vertical panel holding the persistent navigation above the screen's controls. The
+ * host composes JavaFX regions and manages screen lifecycle; it knows nothing of how a screen builds
+ * its simulation or controls.
  * <p>
- * A level switch is atomic in both directions: the replacement screen is constructed before the current one is stopped, and the navigation selection is restored if construction fails,
- * so either the new level is fully installed or the previous level remains both operational and selected.
+ * Screens are rebuilt fresh on each switch. The replacement screen is constructed before the current
+ * screen is deactivated; if construction fails, the current screen remains operational and the
+ * previous navigation selection is restored. Failures during subsequent lifecycle or installation
+ * operations propagate. Cross-level continuity (e.g. a learner-created body carried forward) is a
+ * future model-layer concern, not screen state.
  *
  * @author Eugeniu PLATITA
  */
 public final class Main extends Application
 {
     private static final String WINDOW_TITLE = "Orbital Mechanics Simulator";
-    private static final double SWITCH_BAR_SPACING_PIXELS = 8.0;
-    private static final double SWITCH_BAR_PADDING_PIXELS = 6.0;
+    private static final double NAV_BAR_SPACING_PIXELS = 8.0;
+    private static final double SIDE_PANEL_SPACING_PIXELS = 6.0;
+    private static final double SIDE_PANEL_PADDING_PIXELS = 6.0;
+    private static final double SIDE_PANEL_WIDTH_PIXELS = 300.0;
 
     private final BorderPane host = new BorderPane();
+    private final VBox sidePanel = new VBox(SIDE_PANEL_SPACING_PIXELS);
 
     private Stage stage;
     private LevelScreen currentScreen;
     private ToggleButton currentLevelButton;
+    private HBox navigationBar;
 
-    private HBox buildSwitchBar()
+    private HBox buildNavigationBar()
     {
         final ToggleGroup group = new ToggleGroup();
 
@@ -54,10 +62,9 @@ public final class Main extends Application
 
         currentLevelButton = level1Button;
 
-        final HBox switchBar = new HBox(SWITCH_BAR_SPACING_PIXELS, level0Button, level1Button);
-        switchBar.setAlignment(Pos.CENTER_LEFT);
-        switchBar.setPadding(new Insets(SWITCH_BAR_PADDING_PIXELS));
-        return switchBar;
+        final HBox bar = new HBox(NAV_BAR_SPACING_PIXELS, level0Button, level1Button);
+        bar.setAlignment(Pos.CENTER_LEFT);
+        return bar;
     }
 
     /**
@@ -73,14 +80,16 @@ public final class Main extends Application
     private void showLevel(final LevelScreen screen, final String levelName)
     {
         currentScreen = screen;
-        host.setCenter(screen.view());
+        host.setCenter(screen.simulationView());
+        sidePanel.getChildren().setAll(navigationBar, new Separator(), screen.controlsView());
         stage.setTitle(WINDOW_TITLE + " — " + levelName);
         screen.activate();
     }
 
     /**
-     * Shows the host window with the level switch and the initial (Level 1) screen.
-     * The initial screen is activated only after the scene is set and the stage shown, matching the verified screen lifecycle.
+     * Shows the host window with the side panel and the initial (Level 1) screen. The initial screen
+     * is activated only after the scene is set and the stage shown, matching the verified screen
+     * lifecycle.
      *
      * @param primaryStage the primary stage supplied by JavaFX; never null
      */
@@ -88,10 +97,14 @@ public final class Main extends Application
     public void start(final Stage primaryStage)
     {
         this.stage = primaryStage;
-        host.setTop(buildSwitchBar());
+        this.navigationBar = buildNavigationBar();
+        sidePanel.setPadding(new Insets(SIDE_PANEL_PADDING_PIXELS));
+        sidePanel.setPrefWidth(SIDE_PANEL_WIDTH_PIXELS);
+        host.setRight(sidePanel);
 
         currentScreen = new Level1Screen();
-        host.setCenter(currentScreen.view());
+        host.setCenter(currentScreen.simulationView());
+        sidePanel.getChildren().setAll(navigationBar, new Separator(), currentScreen.controlsView());
         stage.setTitle(WINDOW_TITLE + " — Level 1");
         stage.setScene(new Scene(host));
         stage.show();
@@ -115,17 +128,12 @@ public final class Main extends Application
             final String levelName,
             final ToggleButton source)
     {
-        // Keep one level selected at all times.
-        // If the active toggle is clicked again, restore its selection and do not rebuild the current screen.
         if (!source.isSelected())
         {
             source.setSelected(true);
             return;
         }
 
-        // The toggle selection has already moved to the requested level.
-        // Construct the replacement before touching the current screen;
-        // if construction fails, the current screen is left untouched and the previous selection is restored, so navigation and screen state agree.
         boolean installed = false;
         try
         {
