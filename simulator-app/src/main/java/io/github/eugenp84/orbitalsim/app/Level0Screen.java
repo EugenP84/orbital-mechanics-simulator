@@ -16,38 +16,34 @@ import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 import java.util.Locale;
 import java.util.Optional;
 
 /**
- * The Level 0 (Planet Creation) screen: the learner sets a planet's mass, radius, orbital distance and
- * tangential speed, sees it created and orbiting, and the scenario completes at the first observation.
+ * The Level 0 (Planet Creation) screen: the learner sets a planet's mass, radius, orbital distance and tangential speed, sees it created and orbiting, and the scenario completes at the first observation.
  * <p>
- * The generic presentation lives in {@link SimulationViewCore}; this screen supplies Level 0's four
- * parameter sliders and the read-only circular-speed reference, wired to a {@link Level0Controller}.
- * Tangential speed is shown as an absolute value in kilometres per second, not as a fraction of
- * circular speed — introducing velocity as a physical quantity, distinct from Level 1's speed-relative
- * task. Level 0 has no assessment and no hints. Because the orbital distance changes the physical
- * extent of the view, changing it re-frames the canvas through the core's replaceable transform and
- * re-scales the trail's sampling so its spatial density stays appropriate to the new orbit.
+ * The generic presentation lives in {@link SimulationViewCore}.
+ * this screen supplies Level 0's four parameter sliders and the circular-speed reference, and exposes a simulation region (the canvas) and a vertical controls region.
+ * Tangential speed is shown as an absolute value in kilometres per second,
+ * not as a fraction of circular speed — introducing velocity as a physical quantity, distinct from Level 1's speed-relative task.
  * <p>
- * The parameters define the attempt, so the sliders are locked while it is running or paused, matching
- * Level 1's configuration semantics. Sliders commit on a settled value (drag end, track click or
- * keyboard), rebuilding the attempt, and only when the settled value differs from the installed one,
- * so a drag does not build discarded attempts. The UI ranges are interaction bounds only; the learning
- * layer remains the authority on physical validity.
+ * The slider value labels track the current selection live; the circular-speed reference describes the
+ * currently configured attempt and is updated only on a successful commit, so it is labelled
+ * accordingly and does not appear to change mid-drag before the attempt is rebuilt. Changing the
+ * orbital distance re-frames the view and re-scales the trail sampling. The parameters define the
+ * attempt, so the sliders are locked while it runs or is paused, matching Level 1's semantics.
  *
  * @author Eugeniu PLATITA
  */
 public final class Level0Screen implements LevelScreen
 {
-    private static final String INTEGRATOR_LABEL = "Integrator: Velocity Verlet (fixed)";
+    private static final String INTEGRATOR_VALUE = "Velocity Verlet (fixed)";
 
     private static final double CANVAS_WIDTH_PIXELS = 900.0;
     private static final double CANVAS_HEIGHT_PIXELS = 700.0;
@@ -58,8 +54,8 @@ public final class Level0Screen implements LevelScreen
     private static final double ASTRONOMICAL_UNIT = PhysicalConstants.ASTRONOMICAL_UNIT;
     private static final double METRES_PER_SECOND_IN_KILOMETRES = 1_000.0;
 
-    // Pedagogical interaction ranges (not validity bounds). Mass and radius in Earth units; distance
-    // in astronomical units; tangential speed as an absolute value in kilometres per second.
+    // Pedagogical interaction ranges (not validity bounds). Mass and radius in Earth units;
+    // distance in astronomical units; tangential speed as an absolute value in kilometres per second.
     private static final double MIN_MASS_EARTHS = 0.1;
     private static final double MAX_MASS_EARTHS = 10.0;
     private static final double DEFAULT_MASS_EARTHS = 1.0;
@@ -75,8 +71,7 @@ public final class Level0Screen implements LevelScreen
     private static final double MIN_SPEED_KILOMETRES_PER_SECOND = 5.0;
     private static final double MAX_SPEED_KILOMETRES_PER_SECOND = 50.0;
 
-    // Settled-value comparison tolerances, each far smaller than a meaningful slider step, so they
-    // absorb floating-point noise without hiding a real change of selection.
+    // Settled-value comparison tolerances, each far smaller than a meaningful slider step, so they absorb floating-point noise without hiding a real change of selection.
     private static final double MASS_EPSILON_KILOGRAMS = 1.0;
     private static final double RADIUS_EPSILON_METRES = 1.0;
     private static final double DISTANCE_EPSILON_METRES = 1.0;
@@ -85,7 +80,7 @@ public final class Level0Screen implements LevelScreen
     private static final double CONTROL_BAR_SPACING_PIXELS = 10.0;
     private static final double CONTROL_ROW_SPACING_PIXELS = 6.0;
     private static final double CONTROL_PANEL_PADDING_PIXELS = 10.0;
-    private static final double PARAMETER_SLIDER_WIDTH_PIXELS = 200.0;
+    private static final double PARAMETER_SLIDER_WIDTH_PIXELS = 260.0;
 
     private static final int TRAIL_MAXIMUM_POINTS = 1_500;
     private static final double TRAIL_SEGMENT_DIVISOR = 240.0;
@@ -93,7 +88,6 @@ public final class Level0Screen implements LevelScreen
     private final Level0Controller controller;
     private final TrajectoryTrail trail;
     private final SimulationViewCore core;
-    //private final Parent root;
     private final Parent simulationRegion;
     private final Parent controlsRegion;
 
@@ -107,13 +101,12 @@ public final class Level0Screen implements LevelScreen
     private Label speedValueLabel;
     private Label circularReferenceLabel;
 
-    /** Builds the Level 0 screen: its controller, view core, parameter panel and canvas. */
+    /** Builds the Level 0 screen: its controller, view core, and the simulation and controls regions. */
     public Level0Screen()
     {
         this.controller = new Level0Controller(new Level0Scenario());
 
-        this.trail = new TrajectoryTrail(
-                TRAIL_MAXIMUM_POINTS, controller.configuredDistanceMetres() / TRAIL_SEGMENT_DIVISOR);
+        this.trail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, controller.configuredDistanceMetres() / TRAIL_SEGMENT_DIVISOR);
 
         final ViewTransform transform = transformForDistance(controller.configuredDistanceMetres());
 
@@ -127,7 +120,7 @@ public final class Level0Screen implements LevelScreen
                 this::refreshLevelControls,
                 Level0Screen::learnerTextFor,
                 Level0Screen::planetPositionOf,
-                INTEGRATOR_LABEL);
+                INTEGRATOR_VALUE);
 
         this.simulationRegion = new StackPane(canvas);
         this.controlsRegion = buildControlPanel();
@@ -140,23 +133,14 @@ public final class Level0Screen implements LevelScreen
         core.startLoop();
     }
 
-    private Slider buildParameterSlider(final double min, final double max, final double value)
-    {
-        final Slider slider = new Slider(min, max, value);
-        slider.setPrefWidth(PARAMETER_SLIDER_WIDTH_PIXELS);
-        return slider;
-    }
-
     private VBox buildControlPanel()
     {
         massSlider = buildParameterSlider(MIN_MASS_EARTHS, MAX_MASS_EARTHS, DEFAULT_MASS_EARTHS);
         radiusSlider = buildParameterSlider(MIN_RADIUS_EARTHS, MAX_RADIUS_EARTHS, DEFAULT_RADIUS_EARTHS);
         distanceSlider = buildParameterSlider(MIN_DISTANCE_AU, MAX_DISTANCE_AU, DEFAULT_DISTANCE_AU);
 
-        final double defaultSpeedKilometres =
-                controller.configuredTangentialSpeedMetresPerSecond() / METRES_PER_SECOND_IN_KILOMETRES;
-        speedSlider = buildParameterSlider(
-                MIN_SPEED_KILOMETRES_PER_SECOND, MAX_SPEED_KILOMETRES_PER_SECOND, defaultSpeedKilometres);
+        final double defaultSpeedKilometres = controller.configuredTangentialSpeedMetresPerSecond() / METRES_PER_SECOND_IN_KILOMETRES;
+        speedSlider = buildParameterSlider(MIN_SPEED_KILOMETRES_PER_SECOND, MAX_SPEED_KILOMETRES_PER_SECOND, defaultSpeedKilometres);
 
         massValueLabel = new Label();
         radiusValueLabel = new Label();
@@ -164,95 +148,43 @@ public final class Level0Screen implements LevelScreen
         speedValueLabel = new Label();
         circularReferenceLabel = new Label();
 
-        massSlider.valueProperty().addListener((observable, oldValue, newValue) ->
-        {
-            updateParameterLabels();
-            if (!massSlider.isValueChanging())
-            {
-                commitConfiguration(false);
-            }
-        });
-        massSlider.valueChangingProperty().addListener((observable, wasChanging, isChanging) ->
-        {
-            if (wasChanging && !isChanging)
-            {
-                commitConfiguration(false);
-            }
-        });
+        registerParameterListeners(massSlider, false);
+        registerParameterListeners(radiusSlider, false);
+        registerParameterListeners(distanceSlider, true);
+        registerParameterListeners(speedSlider, false);
 
-        radiusSlider.valueProperty().addListener((observable, oldValue, newValue) ->
-        {
-            updateParameterLabels();
-            if (!radiusSlider.isValueChanging())
-            {
-                commitConfiguration(false);
-            }
-        });
-        radiusSlider.valueChangingProperty().addListener((observable, wasChanging, isChanging) ->
-        {
-            if (wasChanging && !isChanging)
-            {
-                commitConfiguration(false);
-            }
-        });
+        updateSliderValueLabels();
+        updateCircularReferenceLabel();
 
-        distanceSlider.valueProperty().addListener((observable, oldValue, newValue) ->
-        {
-            updateParameterLabels();
-            if (!distanceSlider.isValueChanging())
-            {
-                commitConfiguration(true);
-            }
-        });
-        distanceSlider.valueChangingProperty().addListener((observable, wasChanging, isChanging) ->
-        {
-            if (wasChanging && !isChanging)
-            {
-                commitConfiguration(true);
-            }
-        });
-
-        speedSlider.valueProperty().addListener((observable, oldValue, newValue) ->
-        {
-            updateParameterLabels();
-            if (!speedSlider.isValueChanging())
-            {
-                commitConfiguration(false);
-            }
-        });
-        speedSlider.valueChangingProperty().addListener((observable, wasChanging, isChanging) ->
-        {
-            if (wasChanging && !isChanging)
-            {
-                commitConfiguration(false);
-            }
-        });
-
-        updateParameterLabels();
-
-        final HBox massRow = new HBox(
-                CONTROL_BAR_SPACING_PIXELS, new Label("Mass:"), massSlider, massValueLabel);
-        massRow.setAlignment(Pos.CENTER_LEFT);
-        final HBox radiusRow = new HBox(
-                CONTROL_BAR_SPACING_PIXELS, new Label("Radius:"), radiusSlider, radiusValueLabel);
-        radiusRow.setAlignment(Pos.CENTER_LEFT);
-        final HBox distanceRow = new HBox(
-                CONTROL_BAR_SPACING_PIXELS, new Label("Distance:"), distanceSlider, distanceValueLabel);
-        distanceRow.setAlignment(Pos.CENTER_LEFT);
-        final HBox speedRow = new HBox(
-                CONTROL_BAR_SPACING_PIXELS,
-                new Label("Tangential speed:"),
-                speedSlider,
-                speedValueLabel,
-                circularReferenceLabel,
-                core.runPauseButton(),
-                core.resetButton());
-        speedRow.setAlignment(Pos.CENTER_LEFT);
+        final HBox buttonRow = new HBox(CONTROL_BAR_SPACING_PIXELS, core.runPauseButton(), core.resetButton());
+        buttonRow.setAlignment(Pos.CENTER_LEFT);
 
         final VBox controlPanel = new VBox(
-                CONTROL_ROW_SPACING_PIXELS, massRow, radiusRow, distanceRow, speedRow, core.playbackRow());
+                CONTROL_ROW_SPACING_PIXELS,
+                sectionHeading("LEVEL 0 — CREATE A PLANET"),
+                new Label("Mass"), massSlider, massValueLabel,
+                new Label("Radius"), radiusSlider, radiusValueLabel,
+                new Label("Orbital distance"), distanceSlider, distanceValueLabel,
+                new Label("Tangential speed"), speedSlider, speedValueLabel,
+                circularReferenceLabel,
+                buttonRow,
+                new Separator(),
+                sectionHeading("SIMULATION"),
+                new Label("Time rate"),
+                core.timeRateControl(),
+                core.timeRateValueLabel(),
+                labelledValue("Status", core.statusLabel()),
+                labelledValue("Integrator", core.integratorLabel()),
+                labelledValue("Elapsed", core.elapsedLabel()));
         controlPanel.setPadding(new Insets(CONTROL_PANEL_PADDING_PIXELS));
         return controlPanel;
+    }
+
+    private Slider buildParameterSlider(final double min, final double max, final double value)
+    {
+        final Slider slider = new Slider(min, max, value);
+        slider.setPrefWidth(PARAMETER_SLIDER_WIDTH_PIXELS);
+        return slider;
     }
 
     private void commitConfiguration(final boolean distanceChanged)
@@ -276,7 +208,8 @@ public final class Level0Screen implements LevelScreen
             trail.setMinimumSegmentMetres(configuredDistance / TRAIL_SEGMENT_DIVISOR);
         }
         core.afterAttemptReplaced();
-        updateParameterLabels();
+        updateSliderValueLabels();
+        updateCircularReferenceLabel();
     }
 
     private boolean configurationChanged(
@@ -293,9 +226,21 @@ public final class Level0Screen implements LevelScreen
     }
 
     @Override
+    public Parent controlsView()
+    {
+        return controlsRegion;
+    }
+
+    @Override
     public void deactivate()
     {
         core.stopLoop();
+    }
+
+    private static VBox labelledValue(final String caption, final Label value)
+    {
+        value.setWrapText(true);
+        return new VBox(new Label(caption), value);
     }
 
     private static String learnerTextFor(final ScenarioTerminationReason reason)
@@ -333,6 +278,39 @@ public final class Level0Screen implements LevelScreen
         radiusSlider.setDisable(!selectable);
         distanceSlider.setDisable(!selectable);
         speedSlider.setDisable(!selectable);
+        updateCircularReferenceLabel();
+    }
+
+    private void registerParameterListeners(final Slider slider, final boolean distanceChanged)
+    {
+        slider.valueProperty().addListener((observable, oldValue, newValue) ->
+        {
+            updateSliderValueLabels();
+            if (!slider.isValueChanging())
+            {
+                commitConfiguration(distanceChanged);
+            }
+        });
+        slider.valueChangingProperty().addListener((observable, wasChanging, isChanging) ->
+        {
+            if (wasChanging && !isChanging)
+            {
+                commitConfiguration(distanceChanged);
+            }
+        });
+    }
+
+    private static Label sectionHeading(final String text)
+    {
+        final Label heading = new Label(text);
+        heading.setStyle("-fx-font-weight: bold;");
+        return heading;
+    }
+
+    @Override
+    public Parent simulationView()
+    {
+        return simulationRegion;
     }
 
     private ViewTransform transformForDistance(final double distanceMetres)
@@ -345,31 +323,17 @@ public final class Level0Screen implements LevelScreen
                 distanceMetres * VIEW_MARGIN_FACTOR);
     }
 
-    private void updateParameterLabels()
+    private void updateCircularReferenceLabel()
     {
-        massValueLabel.setText(
-                String.format(Locale.ROOT, "%.2f Earth masses", massSlider.getValue()));
-        radiusValueLabel.setText(
-                String.format(Locale.ROOT, "%.2f Earth radii", radiusSlider.getValue()));
-        distanceValueLabel.setText(
-                String.format(Locale.ROOT, "%.2f AU", distanceSlider.getValue()));
-        speedValueLabel.setText(
-                String.format(Locale.ROOT, "%.1f km/s", speedSlider.getValue()));
-        final double circularKilometres =
-                controller.circularSpeedReferenceMetresPerSecond() / METRES_PER_SECOND_IN_KILOMETRES;
-        circularReferenceLabel.setText(
-                String.format(Locale.ROOT, "(circular: %.1f km/s)", circularKilometres));
+        final double circularKilometres = controller.circularSpeedReferenceMetresPerSecond() / METRES_PER_SECOND_IN_KILOMETRES;
+        circularReferenceLabel.setText(String.format(Locale.ROOT, "Circular speed (configured): %.1f km/s", circularKilometres));
     }
 
-    @Override
-    public Parent controlsView()
+    private void updateSliderValueLabels()
     {
-        return controlsRegion;
-    }
-
-    @Override
-    public Parent simulationView()
-    {
-        return simulationRegion;
+        massValueLabel.setText(String.format(Locale.ROOT, "%.2f Earth masses", massSlider.getValue()));
+        radiusValueLabel.setText(String.format(Locale.ROOT, "%.2f Earth radii", radiusSlider.getValue()));
+        distanceValueLabel.setText(String.format(Locale.ROOT, "%.2f AU", distanceSlider.getValue()));
+        speedValueLabel.setText(String.format(Locale.ROOT, "%.1f km/s", speedSlider.getValue()));
     }
 }

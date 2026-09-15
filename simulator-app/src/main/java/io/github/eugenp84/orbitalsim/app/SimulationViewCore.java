@@ -10,13 +10,11 @@ import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
 
 import javafx.animation.AnimationTimer;
-import javafx.geometry.Pos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
-import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 
 import java.util.Locale;
@@ -26,24 +24,18 @@ import java.util.OptionalDouble;
 import java.util.function.Function;
 
 /**
- * The level-agnostic presentation core shared by every scenario screen: the animation loop,
- * the trajectory trail, the rendering, and the generic controls (run/pause, reset, time rate, status, integrator, elapsed) that behave identically for every level.
+ * The level-agnostic presentation core shared by every scenario screen: the animation loop, the
+ * trajectory trail, the rendering, and the generic controls (run/pause, reset, time rate, status,
+ * integrator, elapsed) that behave identically for every level.
  * <p>
- * It drives its scenario only through the {@link ScenarioControls} surface, so it has no knowledge of orbital speed, hints, or planet parameters — those remain the responsibility of each screen.
- * The generic status word and colour are level-agnostic, but three things are not, and are therefore supplied by the screen:
- * the learner-facing interpretation of a termination reason, the selection of which body the trail follows (so a future scenario need not disguise its tracked
- * object's type merely to be traced), and the integrator label text (a scenario/application policy, not a generic fact).
- * A screen builds its own level-specific controls, places the core's exposed buttons and playback row into its layout, and supplies a {@code levelControlsRefresh} callback.
+ * It drives its scenario only through the {@link ScenarioControls} surface, so it has no knowledge of
+ * orbital speed, hints, or planet parameters. The generic status word and colour are level-agnostic,
+ * but the learner-facing interpretation of a termination reason, the selection of which body the trail
+ * follows, and the integrator label text are supplied by the screen.
+ * The core owns and wires its generic control widgets and exposes them individually — as bare values, without captions —
+ * so each screen decides how to caption and arrange them; the core never knows how a screen lays out its panel.
  * <p>
- * The {@code levelControlsRefresh} callback runs as part of every generic control refresh — on {@link #initialiseView()},
- * on {@link #afterAttemptReplaced()}, on the run/pause and reset actions, and on every animation frame except the first, whose sole job is to establish the wall-clock baseline.
- * It does not run on that first baseline frame, because no control state has changed.
- * <p>
- * The core owns the run/pause and reset button objects and wires their behaviour, but a screen positions them in its own layout,
- * so the button placement of an existing screen is preserved exactly.
- * The view transform is replaceable ({@link #setTransform(ViewTransform)}) so a screen whose physical extent changes with configuration — such as Level 0's orbital distance — can re-frame the
- * view without rebuilding the core; choosing the extent stays a level-specific responsibility.
- * <p>
+ * The view transform is replaceable ({@link #setTransform(ViewTransform)}) so a screen whose physical extent changes with configuration can re-frame the view without rebuilding the core.
  * Advancement and rendering run on the JavaFX Application Thread; the loop runs continuously and advances only while running.
  *
  * @author Eugeniu PLATITA
@@ -52,16 +44,15 @@ public final class SimulationViewCore
 {
     private static final double NANOS_PER_SECOND = 1_000_000_000.0;
 
-    // A stalled frame, debugger or GC pause must not become one huge simulated-time request.
-    // Excess wall-clock time is discarded, not replayed. A presentation safeguard, not a physics rule.
+    // A stalled frame, debugger or GC pause must not become one huge simulated-time request. Excess
+    // wall-clock time is discarded, not replayed. A presentation safeguard, not a physics rule.
     private static final double MAX_FRAME_DELTA_SECONDS = 1.0 / 30.0;
 
     private static final double SECONDS_PER_DAY = 86_400.0;
     private static final double MIN_TIME_RATE_DAYS_PER_SECOND = 1.0;
     private static final double MAX_TIME_RATE_DAYS_PER_SECOND = 60.0;
 
-    private static final double CONTROL_BAR_SPACING_PIXELS = 10.0;
-    private static final double TIME_RATE_SLIDER_WIDTH_PIXELS = 160.0;
+    private static final double TIME_RATE_SLIDER_WIDTH_PIXELS = 260.0;
 
     private final ScenarioControls controls;
     private final GraphicsContext graphics;
@@ -75,28 +66,27 @@ public final class SimulationViewCore
     private final Button resetButton = new Button("Reset");
     private final Label stateLabel = new Label();
     private final Label elapsedLabel = new Label();
+    private final Label integratorLabel;
     private final Label timeRateValueLabel = new Label();
     private final Slider timeRateSlider;
-    private final HBox playbackRow;
 
     private ViewTransform transform;
     private AnimationTimer animationTimer;
 
     /**
-     * Creates a presentation core driving the given controls, rendering onto the given canvas through
-     * the given transform, recording motion into the given trail, refreshing level-specific controls
+     * Creates a presentation core driving the given controls, rendering onto the given canvas through the given transform,
+     * recording motion into the given trail, refreshing level-specific controls
      * through the given callback, interpreting termination reasons through the given text mapping,
-     * selecting the trailed body through the given position function, and labelling the integrator
-     * with the given text.
+     * selecting the trailed body through the given position function, and labelling the integrator with the given bare value text (the screen supplies its caption).
      *
-     * @param controls             the level-agnostic surface driving the scenario. Never null
+     * @param controls             the level-agnostic surface driving the scenario; never null
      * @param canvas               the canvas to render onto; never null
-     * @param transform            the initial metre-to-pixel mapping for the view; never null.
+     * @param transform            the initial metre-to-pixel mapping for the view; never null
      * @param trail                the trajectory trail to record and draw; never null
-     * @param levelControlsRefresh run as part of every generic control refresh so the screen can  refresh its own level-specific controls - never null
-     * @param terminationText      maps a termination reason to the screen's learner-facing text. never null
-     * @param trailPosition        selects the position of the body the trail follows from a snapshot or empty if none; never null
-     * @param integratorText       the integrator label shown in the playback row; never null or blank
+     * @param levelControlsRefresh run as part of every generic control refresh; never null
+     * @param terminationText      maps a termination reason to the screen's learner-facing text; never null
+     * @param trailPosition        selects the trailed body's position from a snapshot, or empty; never null
+     * @param integratorValue      the integrator value text (without caption); never null or blank
      */
     public SimulationViewCore(
             final ScenarioControls controls,
@@ -106,23 +96,22 @@ public final class SimulationViewCore
             final Runnable levelControlsRefresh,
             final Function<ScenarioTerminationReason, String> terminationText,
             final Function<SimulationSnapshot, Optional<Vector3D>> trailPosition,
-            final String integratorText)
+            final String integratorValue)
     {
         this.controls = Objects.requireNonNull(controls, "controls must not be null");
         Objects.requireNonNull(canvas, "canvas must not be null");
         this.graphics = canvas.getGraphicsContext2D();
         this.transform = Objects.requireNonNull(transform, "transform must not be null");
         this.trail = Objects.requireNonNull(trail, "trail must not be null");
-        this.levelControlsRefresh =
-                Objects.requireNonNull(levelControlsRefresh, "levelControlsRefresh must not be null");
-        this.terminationText =
-                Objects.requireNonNull(terminationText, "terminationText must not be null");
+        this.levelControlsRefresh = Objects.requireNonNull(levelControlsRefresh, "levelControlsRefresh must not be null");
+        this.terminationText = Objects.requireNonNull(terminationText, "terminationText must not be null");
         this.trailPosition = Objects.requireNonNull(trailPosition, "trailPosition must not be null");
-        Objects.requireNonNull(integratorText, "integratorText must not be null");
-        if (integratorText.isBlank())
+        Objects.requireNonNull(integratorValue, "integratorValue must not be null");
+        if (integratorValue.isBlank())
         {
-            throw new IllegalArgumentException("integratorText must not be blank");
+            throw new IllegalArgumentException("integratorValue must not be blank");
         }
+        this.integratorLabel = new Label(integratorValue);
         this.renderer = new SimulationRenderer();
 
         runPauseButton.setOnAction(event ->
@@ -146,23 +135,11 @@ public final class SimulationViewCore
             timeRateValueLabel.setText(formatTimeRate(daysPerSecond));
         });
         timeRateValueLabel.setText(formatTimeRate(initialDaysPerSecond));
-
-        playbackRow = new HBox(
-                CONTROL_BAR_SPACING_PIXELS,
-                new Label("Time rate:"),
-                timeRateSlider,
-                timeRateValueLabel,
-                stateLabel,
-                new Label(integratorText),
-                elapsedLabel);
-        playbackRow.setAlignment(Pos.CENTER_LEFT);
     }
 
     /**
-     * Makes an attempt replacement immediately visible: clears the trail, renders the new committed state, and refreshes the controls.
-     * Called after a reset, or after a screen reconfigures the attempt.
-     * A screen that also changed the view extent calls {@link #setTransform(ViewTransform)} before this,
-     * so the render here already uses the new transform and an empty trail.
+     * Makes an attempt replacement immediately visible: clears the trail, renders the new committed state, and refreshes the controls. A screen that also changed the view extent calls
+     * {@link #setTransform(ViewTransform)} before this.
      */
     public void afterAttemptReplaced()
     {
@@ -171,8 +148,75 @@ public final class SimulationViewCore
         refreshControls();
     }
 
+    private AnimationTimer createTimer()
+    {
+        return new AnimationTimer()
+        {
+            private long previousFrameNanos;
+
+            @Override
+            public void handle(final long now)
+            {
+                if (previousFrameNanos == 0L)
+                {
+                    previousFrameNanos = now;
+                    return;
+                }
+
+                final long elapsedNanos = now - previousFrameNanos;
+                previousFrameNanos = now;
+                if (elapsedNanos <= 0L)
+                {
+                    return;
+                }
+
+                final double elapsedWallClockSeconds = elapsedNanos / NANOS_PER_SECOND;
+                final double boundedWallClockSeconds = Math.min(elapsedWallClockSeconds, MAX_FRAME_DELTA_SECONDS);
+
+                final boolean wasRunning = controls.state() == ScenarioLifecycleState.RUNNING;
+
+                if (wasRunning)
+                {
+                    trailPosition.apply(controls.snapshot()).ifPresent(trail::record);
+                }
+
+                controls.advanceByWallClock(boundedWallClockSeconds);
+
+                final SimulationSnapshot snapshot = controls.snapshot();
+                if (wasRunning)
+                {
+                    trailPosition.apply(snapshot).ifPresent(trail::record);
+                }
+
+                renderer.render(graphics, snapshot, transform, trail.points());
+                refreshControls();
+            }
+        };
+    }
+
+    /** The elapsed-time readout label, wired and updated by the core, for a screen to place. */
+    public Label elapsedLabel()
+    {
+        return elapsedLabel;
+    }
+
+    private static String elapsedTextFor(final OptionalDouble elapsedSeconds)
+    {
+        if (elapsedSeconds.isEmpty())
+        {
+            return "—";
+        }
+        return String.format(Locale.ROOT, "%.1f days", elapsedSeconds.getAsDouble() / SECONDS_PER_DAY);
+    }
+
+    private static String formatTimeRate(final double daysPerSecond)
+    {
+        return String.format(Locale.ROOT, "%.0f days / second", daysPerSecond);
+    }
+
     /**
-     * Renders the current committed state and refreshes the controls once, before the loop starts, so the initial view is shown immediately rather than after the first animation frame.
+     * Renders the current committed state and refreshes the controls once, before the loop starts,
+     * so the initial view is shown immediately rather than after the first animation frame.
      */
     public void initialiseView()
     {
@@ -180,10 +224,10 @@ public final class SimulationViewCore
         refreshControls();
     }
 
-    /** The core-owned playback row (time rate, status, integrator, elapsed) for a screen to place. */
-    public HBox playbackRow()
+    /** The integrator value label (no caption), for a screen to place under its own caption. */
+    public Label integratorLabel()
     {
-        return playbackRow;
+        return integratorLabel;
     }
 
     /** Updates the generic controls from the current state, then runs the level-specific refresh. */
@@ -216,6 +260,16 @@ public final class SimulationViewCore
         return runPauseButton;
     }
 
+    private static String runPauseLabelFor(final ScenarioLifecycleState state)
+    {
+        return switch (state)
+        {
+            case NOT_STARTED, COMPLETED, FAILED -> "Start";
+            case RUNNING -> "Pause";
+            case PAUSED -> "Resume";
+        };
+    }
+
     /**
      * Replaces the view transform, so a screen can re-frame the view when its physical extent changes with configuration.
      * Choosing the extent is a level-specific responsibility.
@@ -245,101 +299,6 @@ public final class SimulationViewCore
         animationTimer.start();
     }
 
-    /** Stops the animation loop, if running, and permits a later restart. */
-    public void stopLoop()
-    {
-        if (animationTimer != null)
-        {
-            animationTimer.stop();
-            animationTimer = null;
-        }
-    }
-
-    private AnimationTimer createTimer()
-    {
-        return new AnimationTimer()
-        {
-            private long previousFrameNanos;
-
-            @Override
-            public void handle(final long now)
-            {
-                if (previousFrameNanos == 0L)
-                {
-                    previousFrameNanos = now;
-                    return;
-                }
-
-                final long elapsedNanos = now - previousFrameNanos;
-                previousFrameNanos = now;
-                if (elapsedNanos <= 0L)
-                {
-                    return;
-                }
-
-                final double elapsedWallClockSeconds = elapsedNanos / NANOS_PER_SECOND;
-                final double boundedWallClockSeconds =
-                        Math.min(elapsedWallClockSeconds, MAX_FRAME_DELTA_SECONDS);
-
-                final boolean wasRunning = controls.state() == ScenarioLifecycleState.RUNNING;
-
-                if (wasRunning)
-                {
-                    trailPosition.apply(controls.snapshot()).ifPresent(trail::record);
-                }
-
-                controls.advanceByWallClock(boundedWallClockSeconds);
-
-                final SimulationSnapshot snapshot = controls.snapshot();
-                if (wasRunning)
-                {
-                    trailPosition.apply(snapshot).ifPresent(trail::record);
-                }
-
-                renderer.render(graphics, snapshot, transform, trail.points());
-                refreshControls();
-            }
-        };
-    }
-
-    private String statusTextFor(
-            final ScenarioLifecycleState state,
-            final Optional<ScenarioTerminationReason> reason)
-    {
-        if (reason.isEmpty())
-        {
-            return "Status: " + statusWordFor(state);
-        }
-        return "Status: " + statusWordFor(state) + " — " + terminationText.apply(reason.get());
-    }
-
-    private static String elapsedTextFor(final OptionalDouble elapsedSeconds)
-    {
-        if (elapsedSeconds.isEmpty())
-        {
-            return "Elapsed: —";
-        }
-        return String.format(
-                Locale.ROOT,
-                "Elapsed: %.1f days",
-                elapsedSeconds.getAsDouble() / SECONDS_PER_DAY);
-    }
-
-    private static String formatTimeRate(final double daysPerSecond)
-    {
-        return String.format(Locale.ROOT, "%.0f days/s", daysPerSecond);
-    }
-
-    private static String runPauseLabelFor(final ScenarioLifecycleState state)
-    {
-        return switch (state)
-        {
-            case NOT_STARTED, COMPLETED, FAILED -> "Start";
-            case RUNNING -> "Pause";
-            case PAUSED -> "Resume";
-        };
-    }
-
     private static Color statusColourFor(final ScenarioLifecycleState state)
     {
         return switch (state)
@@ -348,6 +307,23 @@ public final class SimulationViewCore
             case FAILED -> Color.web("#e05252");
             case NOT_STARTED, RUNNING, PAUSED -> Color.web("#c7ccd6");
         };
+    }
+
+    /** The status readout label, wired and updated (text and colour) by the core, for a screen to place. */
+    public Label statusLabel()
+    {
+        return stateLabel;
+    }
+
+    private String statusTextFor(
+            final ScenarioLifecycleState state,
+            final Optional<ScenarioTerminationReason> reason)
+    {
+        if (reason.isEmpty())
+        {
+            return statusWordFor(state);
+        }
+        return statusWordFor(state) + " — " + terminationText.apply(reason.get());
     }
 
     private static String statusWordFor(final ScenarioLifecycleState state)
@@ -360,5 +336,27 @@ public final class SimulationViewCore
             case COMPLETED -> "Completed";
             case FAILED -> "Failed";
         };
+    }
+
+    /** Stops the animation loop, if running, and permits a later restart. */
+    public void stopLoop()
+    {
+        if (animationTimer != null)
+        {
+            animationTimer.stop();
+            animationTimer = null;
+        }
+    }
+
+    /** The time-rate slider, wired by the core, for a screen to place. */
+    public Slider timeRateControl()
+    {
+        return timeRateSlider;
+    }
+
+    /** The time-rate value label, updated by the core's slider listener, for a screen to place. */
+    public Label timeRateValueLabel()
+    {
+        return timeRateValueLabel;
     }
 }
