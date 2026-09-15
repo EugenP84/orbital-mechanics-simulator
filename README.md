@@ -25,12 +25,12 @@ accuracy, energy behaviour and computational cost.
 
 ## Modules
 
-| Module | Responsibility | Status                     |
-|---|---|----------------------------|
-| `simulator-core` | Domain model, gravitational physics, numerical integrators, simulation engine | Complete                   |
-| `simulator-data` | NASA NeoWs integration, offline cache, JSON persistence | Complete                   |
-| `simulator-learning` | Progressive learning scenarios and adaptive hint system | In progress                |
-| `simulator-app` | JavaFX desktop application | Basic features in progress |
+| Module | Responsibility | Status                                                        |
+|---|---|---------------------------------------------------------------|
+| `simulator-core` | Domain model, gravitational physics, numerical integrators, simulation engine | Complete                                                      |
+| `simulator-data` | NASA NeoWs integration, offline cache, JSON persistence | Complete                                                      |
+| `simulator-learning` | Progressive learning scenarios and adaptive hint system | In progress... (L0 and L1 - complete)                         |
+| `simulator-app` | JavaFX desktop application | UI, rendering, controllers and multi-level presentation shell |
 
 The dependency direction is one-way: `simulator-app` → `{simulator-learning,
 simulator-data}` → `simulator-core`. The core depends on nothing outside the
@@ -66,6 +66,64 @@ Integration with NASA's NeoWs (Near Earth Object Web Service), built around a tr
 - A bundled offline dataset (a genuine captured NeoWs response) served through the same parser as live data, with explicit provenance (live vs cached) and source-capture timestamps.
 - Cause-based failure classification: transport failures, rate limiting, server errors and malformed external data fall back to the offline dataset, while configuration errors and internal defects surface rather than being masked.
 - An injectable HTTP transport seam, so every response class is tested deterministically offline; a real HttpClient-backed transport performs the actual network I/O.
+
+### `simulator-learning`
+
+The learning layer owns scenario lifecycle, observation cadence, completion
+policy and pedagogical feedback without depending on JavaFX.
+
+The currently implemented learning scenarios are:
+
+#### Level 0 — Planet Creation
+
+The learner configures:
+
+- planet mass;
+- planet radius;
+- initial orbital distance;
+- initial tangential speed.
+
+Level 0 has no learner failure condition and no adaptive hints. It introduces
+the physical parameter space before imposing an orbital objective.
+
+#### Level 1 — Stable Orbit
+
+The learner adjusts the initial tangential speed of a planet around a star and
+attempts to produce a near-circular stable orbit.
+
+Assessment uses orbital quantities derived from the simulated state, including
+bound/unbound energy, eccentricity, revolution progress and numerical-energy
+integrity. A rule-based hint engine provides physics-informed guidance based on
+the configured launch speed and simulated orbital state.
+
+Scenario advancement remains owned by `ScenarioSession`. Numerical timestep,
+learning observation cadence and JavaFX presentation cadence are kept
+separate.
+
+### `simulator-app`
+
+The JavaFX application currently provides a working vertical slice for Levels
+0 and 1.
+
+The presentation architecture consists of:
+
+- `Main` — the thin application host and persistent level navigation;
+- `LevelScreen` — the contract through which each level exposes its simulation
+  and controls regions;
+- `SimulationViewCore` — shared animation, rendering, trajectory and generic
+  simulation-control behaviour;
+- `ScenarioControls` — the level-agnostic controller surface used by the
+  presentation core;
+- `ScenarioPlayer` — shared lifecycle and presentation-speed behaviour used by
+  level-specific controllers;
+- `SimulationRenderer` and `TrajectoryTrail` — Canvas rendering and bounded
+  trajectory visualisation.
+
+The host places the active simulation in the centre and a vertical control
+panel on the right. Level navigation remains persistent while level-specific
+screens are rebuilt on switching. The side panel uses vertically stacked
+controls and readouts so labels and status information remain legible on
+smaller displays.
 
 ## Building and running
 
@@ -105,6 +163,7 @@ position was revised in review:
 | ADR-007 | External NEO data acquisition and trust boundary |
 | ADR-008 | Learning Scenario Architecture and Evaluation Cadence |
 | ADR-009 | Orbital State Analysis and Element Semantics |
+| ADR-010 | JavaFX presentation architecture and multi-level shell |
 
 ## Documentation
 
@@ -113,6 +172,18 @@ position was revised in review:
 
 ## Status
 
-**Phase 3 — Development.** `simulator-core` and `simulator-data` are complete and tested; work is
-underway on `simulator-learning` (progressive scenarios and the adaptive hint system) - Session/cadence skeleton complete; L1 scenario - in progress.
-`simulator-app` - in progress (basic features implemented).
+**Phase 3 — Development.**
+
+A stable intermediate JavaFX milestone has been reached:
+
+- the computational core and NASA NeoWs data layer are implemented and tested;
+- Level 0 and Level 1 learning backends are implemented;
+- Level 1 physics-informed hints are implemented;
+- Level 0 and Level 1 are integrated into the JavaFX application;
+- the application has persistent level navigation and a shared multi-level
+  presentation architecture;
+- the Level 0 and Level 1 UI flows have been manually exercised through the
+  running JavaFX application.
+
+The next development work focuses on the remaining learning scenarios
+(Levels 2–4), and subsequent empirical evaluation of numerical and trajectory behaviour.

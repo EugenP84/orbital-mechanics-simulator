@@ -17,17 +17,15 @@ import java.util.function.Supplier;
 /**
  * JavaFX entry point and host for the orbital mechanics simulator.
  * <p>
- * The host owns the window shell and persistent level navigation. Each {@link LevelScreen} supplies a
- * simulation region and a controls region; the host places the simulation region in the centre and,
- * on the right, a vertical panel holding the persistent navigation above the screen's controls. The
- * host composes JavaFX regions and manages screen lifecycle; it knows nothing of how a screen builds
- * its simulation or controls.
+ * The host owns the window shell and persistent level navigation.
+ * Each {@link LevelScreen} supplies a simulation region and a controls region;
+ * the host places the simulation region in the centre and, on the right, a vertical panel holding the persistent navigation above the screen's controls.
+ * The host composes JavaFX regions and manages screen lifecycle; it knows nothing of how a screen builds its simulation or controls.
  * <p>
- * Screens are rebuilt fresh on each switch. The replacement screen is constructed before the current
- * screen is deactivated; if construction fails, the current screen remains operational and the
- * previous navigation selection is restored. Failures during subsequent lifecycle or installation
- * operations propagate. Cross-level continuity (e.g. a learner-created body carried forward) is a
- * future model-layer concern, not screen state.
+ * Screens are rebuilt fresh on each switch. The replacement screen is constructed before the current screen is deactivated;
+ * if construction fails, the current screen remains operational and the previous navigation selection is restored.
+ * Failures during subsequent lifecycle or installation operations propagate.
+ * Cross-level continuity (e.g. a learner-created body carried forward) is a future model-layer concern, not screen state.
  *
  * @author Eugeniu PLATITA
  */
@@ -87,9 +85,8 @@ public final class Main extends Application
     }
 
     /**
-     * Shows the host window with the side panel and the initial (Level 1) screen. The initial screen
-     * is activated only after the scene is set and the stage shown, matching the verified screen
-     * lifecycle.
+     * Shows the host window with the side panel and the initial (Level 1) screen.
+     * The initial screen is activated only after the scene is set and the stage shown, matching the verified screen lifecycle.
      *
      * @param primaryStage the primary stage supplied by JavaFX; never null
      */
