@@ -9,7 +9,6 @@ import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level3Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
-
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -20,7 +19,6 @@ import javafx.scene.control.Slider;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-
 import java.util.Locale;
 import java.util.Optional;
 
@@ -86,9 +84,9 @@ public final class Level3Screen implements LevelScreen
     {
         this.controller = new Level3Controller(new Level3Scenario());
 
-        final TrajectoryTrail trail = new TrajectoryTrail(
-                TRAIL_MAXIMUM_POINTS,
-                PhysicalConstants.ASTRONOMICAL_UNIT / TRAIL_SEGMENT_DIVISOR);
+        final double trailSegmentMetres = PhysicalConstants.ASTRONOMICAL_UNIT / TRAIL_SEGMENT_DIVISOR;
+        final TrajectoryTrail targetTrail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, trailSegmentMetres);
+        final TrajectoryTrail perturberTrail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, trailSegmentMetres);
 
         final ViewTransform transform = ViewTransform.fitting(
                 CANVAS_WIDTH_PIXELS,
@@ -104,11 +102,14 @@ public final class Level3Screen implements LevelScreen
                 controller,
                 canvas,
                 transform,
-                trail,
+                targetTrail,
                 this::refreshLevelControls,
                 Level3Screen::learnerTextFor,
                 this::targetPositionOf,
-                INTEGRATOR_VALUE);
+                INTEGRATOR_VALUE,
+                Optional.of(perturberTrail),
+                Optional.of(this::perturberPositionOf),
+                Optional.of(controller.perturberId()));
 
         this.simulationRegion = new StackPane(canvas);
         this.controlsRegion = buildControlPanel();
@@ -277,6 +278,14 @@ public final class Level3Screen implements LevelScreen
         return state == ScenarioLifecycleState.NOT_STARTED
                 || state == ScenarioLifecycleState.COMPLETED
                 || state == ScenarioLifecycleState.FAILED;
+    }
+
+    private Optional<Vector3D> perturberPositionOf(final SimulationSnapshot snapshot)
+    {
+        return snapshot.bodies().stream()
+                .filter(body ->
+                        body.definition().id().equals(controller.perturberId())).map(body -> body.state().position())
+                .findFirst();
     }
 
     private static double quantise(final double value, final double step)

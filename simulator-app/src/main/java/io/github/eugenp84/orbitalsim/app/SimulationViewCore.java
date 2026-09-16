@@ -8,7 +8,6 @@ import io.github.eugenp84.orbitalsim.core.math.Vector3D;
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
-
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -16,12 +15,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
 import javafx.scene.paint.Color;
-
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.function.Function;
+import java.util.Map;
 
 /**
  * The level-agnostic presentation core shared by every scenario screen: the animation loop, the
@@ -47,12 +46,14 @@ public final class SimulationViewCore
     // A stalled frame, debugger or GC pause must not become one huge simulated-time request. Excess
     // wall-clock time is discarded, not replayed. A presentation safeguard, not a physics rule.
     private static final double MAX_FRAME_DELTA_SECONDS = 1.0 / 30.0;
-
     private static final double SECONDS_PER_DAY = 86_400.0;
     private static final double MIN_TIME_RATE_DAYS_PER_SECOND = 1.0;
     private static final double MAX_TIME_RATE_DAYS_PER_SECOND = 60.0;
-
     private static final double TIME_RATE_SLIDER_WIDTH_PIXELS = 260.0;
+
+    private static final Color PRIMARY_TRAIL_COLOUR = Color.web("#4aa3ff", 0.55);
+    private static final Color SECONDARY_BODY_COLOUR = Color.web("#b07cff");
+    private static final Color SECONDARY_TRAIL_COLOUR = Color.web("#b07cff", 0.55);
 
     private final ScenarioControls controls;
     private final GraphicsContext graphics;
@@ -61,6 +62,10 @@ public final class SimulationViewCore
     private final Runnable levelControlsRefresh;
     private final Function<ScenarioTerminationReason, String> terminationText;
     private final Function<SimulationSnapshot, Optional<Vector3D>> trailPosition;
+
+    private final Optional<TrajectoryTrail> secondaryTrail;
+    private final Optional<Function<SimulationSnapshot, Optional<Vector3D>>> secondaryTrailPosition;
+    private final Optional<String> secondaryBodyId;
 
     private final Button runPauseButton = new Button();
     private final Button resetButton = new Button("Reset");
@@ -98,19 +103,56 @@ public final class SimulationViewCore
             final Function<SimulationSnapshot, Optional<Vector3D>> trailPosition,
             final String integratorValue)
     {
+        this(
+                controls,
+                canvas,
+                transform,
+                trail,
+                levelControlsRefresh,
+                terminationText,
+                trailPosition,
+                integratorValue,
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty());
+    }
+
+    public SimulationViewCore(
+            final ScenarioControls controls,
+            final Canvas canvas,
+            final ViewTransform transform,
+            final TrajectoryTrail trail,
+            final Runnable levelControlsRefresh,
+            final Function<ScenarioTerminationReason, String> terminationText,
+            final Function<SimulationSnapshot, Optional<Vector3D>> trailPosition,
+            final String integratorValue,
+            final Optional<TrajectoryTrail> secondaryTrail,
+            final Optional<Function<SimulationSnapshot, Optional<Vector3D>>>  secondaryTrailPosition,
+            final Optional<String> secondaryBodyId)
+    {
         this.controls = Objects.requireNonNull(controls, "controls must not be null");
         Objects.requireNonNull(canvas, "canvas must not be null");
         this.graphics = canvas.getGraphicsContext2D();
         this.transform = Objects.requireNonNull(transform, "transform must not be null");
         this.trail = Objects.requireNonNull(trail, "trail must not be null");
-        this.levelControlsRefresh = Objects.requireNonNull(levelControlsRefresh, "levelControlsRefresh must not be null");
-        this.terminationText = Objects.requireNonNull(terminationText, "terminationText must not be null");
-        this.trailPosition = Objects.requireNonNull(trailPosition, "trailPosition must not be null");
+        this.levelControlsRefresh = Objects.requireNonNull(levelControlsRefresh,"levelControlsRefresh must not be null");
+        this.terminationText = Objects.requireNonNull(terminationText,"terminationText must not be null");
+        this.trailPosition = Objects.requireNonNull(trailPosition,"trailPosition must not be null");
+        this.secondaryTrail = Objects.requireNonNull(secondaryTrail,"secondaryTrail must not be null");
+        this.secondaryTrailPosition = Objects.requireNonNull(secondaryTrailPosition,"secondaryTrailPosition must not be null");
+        this.secondaryBodyId = Objects.requireNonNull(secondaryBodyId,"secondaryBodyId must not be null");
+
+        if (secondaryTrail.isPresent() != secondaryTrailPosition.isPresent())
+        {
+            throw new IllegalArgumentException("secondary trail and position selector must either both be present or both be empty");
+        }
+
         Objects.requireNonNull(integratorValue, "integratorValue must not be null");
         if (integratorValue.isBlank())
         {
             throw new IllegalArgumentException("integratorValue must not be blank");
         }
+
         this.integratorLabel = new Label(integratorValue);
         this.renderer = new SimulationRenderer();
 
@@ -119,6 +161,7 @@ public final class SimulationViewCore
             controls.toggleRun();
             refreshControls();
         });
+
         resetButton.setOnAction(event ->
         {
             controls.reset();
@@ -126,14 +169,16 @@ public final class SimulationViewCore
         });
 
         final double initialDaysPerSecond = controls.simulatedSecondsPerRealSecond() / SECONDS_PER_DAY;
+
         timeRateSlider = new Slider(MIN_TIME_RATE_DAYS_PER_SECOND, MAX_TIME_RATE_DAYS_PER_SECOND, initialDaysPerSecond);
         timeRateSlider.setPrefWidth(TIME_RATE_SLIDER_WIDTH_PIXELS);
         timeRateSlider.valueProperty().addListener((observable, oldValue, newValue) ->
-        {
-            final double daysPerSecond = newValue.doubleValue();
-            controls.setSimulatedSecondsPerRealSecond(daysPerSecond * SECONDS_PER_DAY);
-            timeRateValueLabel.setText(formatTimeRate(daysPerSecond));
-        });
+                {
+                    final double daysPerSecond = newValue.doubleValue();
+                    controls.setSimulatedSecondsPerRealSecond(daysPerSecond * SECONDS_PER_DAY);
+                    timeRateValueLabel.setText(formatTimeRate(daysPerSecond));
+                });
+
         timeRateValueLabel.setText(formatTimeRate(initialDaysPerSecond));
     }
 
@@ -144,6 +189,7 @@ public final class SimulationViewCore
     public void afterAttemptReplaced()
     {
         trail.clear();
+        secondaryTrail.ifPresent(TrajectoryTrail::clear);
         renderCurrent();
         refreshControls();
     }
@@ -173,22 +219,41 @@ public final class SimulationViewCore
                 final double elapsedWallClockSeconds = elapsedNanos / NANOS_PER_SECOND;
                 final double boundedWallClockSeconds = Math.min(elapsedWallClockSeconds, MAX_FRAME_DELTA_SECONDS);
 
-                final boolean wasRunning = controls.state() == ScenarioLifecycleState.RUNNING;
+                final boolean wasRunning =
+                        controls.state() == ScenarioLifecycleState.RUNNING;
 
                 if (wasRunning)
                 {
-                    trailPosition.apply(controls.snapshot()).ifPresent(trail::record);
+                    final SimulationSnapshot before = controls.snapshot();
+                    recordTrail(before, trail, trailPosition);
+
+                    if (secondaryTrail.isPresent())
+                    {
+                        recordTrail(
+                                before,
+                                secondaryTrail.orElseThrow(),
+                                secondaryTrailPosition.orElseThrow());
+                    }
                 }
 
                 controls.advanceByWallClock(boundedWallClockSeconds);
 
                 final SimulationSnapshot snapshot = controls.snapshot();
+
                 if (wasRunning)
                 {
-                    trailPosition.apply(snapshot).ifPresent(trail::record);
+                    recordTrail(snapshot, trail, trailPosition);
+
+                    if (secondaryTrail.isPresent())
+                    {
+                        recordTrail(
+                                snapshot,
+                                secondaryTrail.orElseThrow(),
+                                secondaryTrailPosition.orElseThrow());
+                    }
                 }
 
-                renderer.render(graphics, snapshot, transform, trail.points());
+                renderSnapshot(snapshot);
                 refreshControls();
             }
         };
@@ -230,6 +295,14 @@ public final class SimulationViewCore
         return integratorLabel;
     }
 
+    private static void recordTrail(
+            final SimulationSnapshot snapshot,
+            final TrajectoryTrail trajectoryTrail,
+            final Function<SimulationSnapshot, Optional<Vector3D>> positionSelector)
+    {
+        positionSelector.apply(snapshot).ifPresent(trajectoryTrail::record);
+    }
+
     /** Updates the generic controls from the current state, then runs the level-specific refresh. */
     public void refreshControls()
     {
@@ -242,10 +315,36 @@ public final class SimulationViewCore
         levelControlsRefresh.run();
     }
 
+    private void renderSnapshot(final SimulationSnapshot snapshot)
+    {
+        if (secondaryTrail.isEmpty())
+        {
+            renderer.render(
+                    graphics,
+                    snapshot,
+                    transform,
+                    trail.points());
+            return;
+        }
+
+        final Map<String, Color> bodyColours = secondaryBodyId.map(id -> Map.of(id, SECONDARY_BODY_COLOUR)).orElseGet(Map::of);
+
+        renderer.render(
+                graphics,
+                snapshot,
+                transform,
+                trail.points(),
+                PRIMARY_TRAIL_COLOUR,
+                secondaryTrail.orElseThrow().points(),
+                SECONDARY_TRAIL_COLOUR,
+                bodyColours);
+    }
+
     /** Renders the current committed state (with the current trail). */
     public void renderCurrent()
     {
-        renderer.render(graphics, controls.snapshot(), transform, trail.points());
+        //renderer.render(graphics, controls.snapshot(), transform, trail.points());
+        renderSnapshot(controls.snapshot());
     }
 
     /** The core-owned reset button, for a screen to place in its layout. */

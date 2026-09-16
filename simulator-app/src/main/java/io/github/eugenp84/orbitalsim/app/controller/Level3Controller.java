@@ -154,6 +154,16 @@ public final class Level3Controller implements ScenarioControls
         return scenario.minPerturberMassKilograms();
     }
 
+    /**
+     * The stable identifier of the perturbing planet in the current attempt.
+     *
+     * @return the perturber body's identifier
+     */
+    public String perturberId()
+    {
+        return attempt.perturberId();
+    }
+
     /** Rebuilds a fresh attempt from the current configuration, discarding progress. */
     @Override
     public void reset()
