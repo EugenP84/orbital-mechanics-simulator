@@ -10,7 +10,6 @@ import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level0Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
-
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -21,7 +20,6 @@ import javafx.scene.control.Slider;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-
 import java.util.Locale;
 import java.util.Optional;
 
@@ -34,21 +32,18 @@ import java.util.Optional;
  * not as a fraction of circular speed — introducing velocity as a physical quantity, distinct from Level 1's speed-relative task.
  * <p>
  * The slider value labels track the current selection live; the circular-speed reference describes the
- * currently configured attempt and is updated only on a successful commit, so it is labelled
- * accordingly and does not appear to change mid-drag before the attempt is rebuilt. Changing the
- * orbital distance re-frames the view and re-scales the trail sampling. The parameters define the
- * attempt, so the sliders are locked while it runs or is paused, matching Level 1's semantics.
+ * currently configured attempt and is updated only on a successful commit, so it is labelled accordingly and does not appear to change mid-drag before the attempt is rebuilt.
+ * The view uses a fixed scale across the supported orbital-distance range so different configurations remain visually comparable.
+ * Changing orbital distance re-scales the trail sampling but does not re-frame the viewport.
  *
  * @author Eugeniu PLATITA
  */
 public final class Level0Screen implements LevelScreen
 {
-    private static final String INTEGRATOR_VALUE = "Velocity Verlet (fixed)";
-
+    private static final String INTEGRATOR_VALUE = "Velocity Verlet";
     private static final double CANVAS_WIDTH_PIXELS = 900.0;
     private static final double CANVAS_HEIGHT_PIXELS = 700.0;
-    private static final double VIEW_MARGIN_FACTOR = 1.15;
-
+    private static final double VIEW_RADIUS_AU = 2.3;
     private static final double EARTH_MASS = PhysicalConstants.EARTH_MASS;
     private static final double EARTH_RADIUS = PhysicalConstants.EARTH_RADIUS;
     private static final double ASTRONOMICAL_UNIT = PhysicalConstants.ASTRONOMICAL_UNIT;
@@ -59,29 +54,25 @@ public final class Level0Screen implements LevelScreen
     private static final double MIN_MASS_EARTHS = 0.1;
     private static final double MAX_MASS_EARTHS = 10.0;
     private static final double DEFAULT_MASS_EARTHS = 1.0;
-
     private static final double MIN_RADIUS_EARTHS = 0.5;
     private static final double MAX_RADIUS_EARTHS = 5.0;
     private static final double DEFAULT_RADIUS_EARTHS = 1.0;
-
     private static final double MIN_DISTANCE_AU = 0.3;
     private static final double MAX_DISTANCE_AU = 2.0;
     private static final double DEFAULT_DISTANCE_AU = 1.0;
-
     private static final double MIN_SPEED_KILOMETRES_PER_SECOND = 5.0;
     private static final double MAX_SPEED_KILOMETRES_PER_SECOND = 50.0;
+    private static final double VIEW_RADIUS_METRES = 1.15 * MAX_DISTANCE_AU * PhysicalConstants.ASTRONOMICAL_UNIT;
 
     // Settled-value comparison tolerances, each far smaller than a meaningful slider step, so they absorb floating-point noise without hiding a real change of selection.
     private static final double MASS_EPSILON_KILOGRAMS = 1.0;
     private static final double RADIUS_EPSILON_METRES = 1.0;
     private static final double DISTANCE_EPSILON_METRES = 1.0;
     private static final double SPEED_EPSILON_METRES_PER_SECOND = 1.0e-3;
-
     private static final double CONTROL_BAR_SPACING_PIXELS = 10.0;
     private static final double CONTROL_ROW_SPACING_PIXELS = 6.0;
     private static final double CONTROL_PANEL_PADDING_PIXELS = 10.0;
     private static final double PARAMETER_SLIDER_WIDTH_PIXELS = 260.0;
-
     private static final int TRAIL_MAXIMUM_POINTS = 1_500;
     private static final double TRAIL_SEGMENT_DIVISOR = 240.0;
 
@@ -108,7 +99,8 @@ public final class Level0Screen implements LevelScreen
 
         this.trail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, controller.configuredDistanceMetres() / TRAIL_SEGMENT_DIVISOR);
 
-        final ViewTransform transform = transformForDistance(controller.configuredDistanceMetres());
+        //final ViewTransform transform = transformForDistance(controller.configuredDistanceMetres());
+        final ViewTransform transform = ViewTransform.fitting(CANVAS_WIDTH_PIXELS, CANVAS_HEIGHT_PIXELS,0.0,0.0, VIEW_RADIUS_AU * ASTRONOMICAL_UNIT);
 
         final Canvas canvas = new Canvas(CANVAS_WIDTH_PIXELS, CANVAS_HEIGHT_PIXELS);
 
@@ -203,9 +195,7 @@ public final class Level0Screen implements LevelScreen
 
         if (distanceChanged)
         {
-            final double configuredDistance = controller.configuredDistanceMetres();
-            core.setTransform(transformForDistance(configuredDistance));
-            trail.setMinimumSegmentMetres(configuredDistance / TRAIL_SEGMENT_DIVISOR);
+            trail.setMinimumSegmentMetres(controller.configuredDistanceMetres() / TRAIL_SEGMENT_DIVISOR);
         }
         core.afterAttemptReplaced();
         updateSliderValueLabels();
@@ -313,15 +303,15 @@ public final class Level0Screen implements LevelScreen
         return simulationRegion;
     }
 
-    private ViewTransform transformForDistance(final double distanceMetres)
-    {
-        return ViewTransform.fitting(
-                CANVAS_WIDTH_PIXELS,
-                CANVAS_HEIGHT_PIXELS,
-                0.0,
-                0.0,
-                distanceMetres * VIEW_MARGIN_FACTOR);
-    }
+//    private ViewTransform transformForDistance(final double distanceMetres)
+//    {
+//        return ViewTransform.fitting(
+//                CANVAS_WIDTH_PIXELS,
+//                CANVAS_HEIGHT_PIXELS,
+//                0.0,
+//                0.0,
+//                distanceMetres * VIEW_MARGIN_FACTOR);
+//    }
 
     private void updateCircularReferenceLabel()
     {
