@@ -58,9 +58,20 @@ public final class Main extends Application
         level1Button.setSelected(true);
         level1Button.setOnAction(event -> switchTo(Level1Screen::new, "Level 1", level1Button));
 
+        final ToggleButton level3Button = new ToggleButton("L3");
+        level3Button.setToggleGroup(group);
+        level3Button.setOnAction(
+                event -> switchTo(Level3Screen::new, "Level 3", level3Button));
+
         currentLevelButton = level1Button;
 
-        final HBox bar = new HBox(NAV_BAR_SPACING_PIXELS, level0Button, level1Button);
+        final HBox bar =
+                new HBox(
+                        NAV_BAR_SPACING_PIXELS,
+                        level0Button,
+                        level1Button,
+                        level3Button);
+
         bar.setAlignment(Pos.CENTER_LEFT);
         return bar;
     }
