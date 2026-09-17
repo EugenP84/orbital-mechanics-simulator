@@ -1,0 +1,19 @@
+{
+  "source": "NASA/JPL SBDB Close Approach Data API",
+  "apiVersion": "1.5",
+  "captureDate": "2026-09-17",
+  "query": "https://ssd-api.jpl.nasa.gov/cad.api?des=99942&body=Earth&date-min=2029-04-13&date-max=2029-04-14&fullname=true&diameter=true",
+  "designation": "99942",
+  "fullName": "99942 Apophis (2004 MN4)",
+  "orbitId": "206",
+  "approachBody": "Earth",
+  "timeScale": "TDB",
+  "jdTdb": "2462240.407091595",
+  "calendarTdb": "2029-Apr-13 21:46",
+  "nominalDistanceAu": "0.000254099098170977",
+  "minimum3SigmaDistanceAu": "0.000254085852623379",
+  "maximum3SigmaDistanceAu": "0.000254112343772133",
+  "relativeVelocityKmPerSecond": "7.42249308586014",
+  "vInfinityKmPerSecond": "5.84135545611464",
+  "timeUncertainty3Sigma": "< 00:01"
+}

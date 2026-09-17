@@ -6,3 +6,4 @@ include(
     "simulator-learning",
     "simulator-app"
 )
+include("simulator-evaluation")
