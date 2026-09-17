@@ -36,7 +36,6 @@ public final class Main extends Application
     private static final double SIDE_PANEL_SPACING_PIXELS = 6.0;
     private static final double SIDE_PANEL_PADDING_PIXELS = 6.0;
     private static final double SIDE_PANEL_WIDTH_PIXELS = 300.0;
-
     private final BorderPane host = new BorderPane();
     private final VBox sidePanel = new VBox(SIDE_PANEL_SPACING_PIXELS);
 
@@ -60,17 +59,20 @@ public final class Main extends Application
 
         final ToggleButton level3Button = new ToggleButton("L3");
         level3Button.setToggleGroup(group);
-        level3Button.setOnAction(
-                event -> switchTo(Level3Screen::new, "Level 3", level3Button));
+        level3Button.setOnAction(event -> switchTo(Level3Screen::new, "Level 3", level3Button));
+
+        final ToggleButton level4Button = new ToggleButton("L4");
+        level4Button.setToggleGroup(group);
+        level4Button.setOnAction(event -> switchTo(Level4Screen::new, "Level 4", level4Button));
 
         currentLevelButton = level1Button;
 
-        final HBox bar =
-                new HBox(
+        final HBox bar = new HBox(
                         NAV_BAR_SPACING_PIXELS,
                         level0Button,
                         level1Button,
-                        level3Button);
+                        level3Button,
+                        level4Button);
 
         bar.setAlignment(Pos.CENTER_LEFT);
         return bar;
@@ -123,18 +125,14 @@ public final class Main extends Application
      * Deactivates the current screen when the application shuts down.
      */
     @Override
-    public void stop()
-    {
+    public void stop() {
         if (currentScreen != null)
         {
             currentScreen.deactivate();
         }
     }
 
-    private void switchTo(
-            final Supplier<LevelScreen> screenFactory,
-            final String levelName,
-            final ToggleButton source)
+    private void switchTo(final Supplier<LevelScreen> screenFactory, final String levelName, final ToggleButton source)
     {
         if (!source.isSelected())
         {
@@ -158,5 +156,5 @@ public final class Main extends Application
                 currentLevelButton.setSelected(true);
             }
         }
-    }
+    }//----------- end of switchTo() ==================================
 }

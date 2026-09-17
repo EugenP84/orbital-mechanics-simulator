@@ -29,7 +29,7 @@ accuracy, energy behaviour and computational cost.
 |---|---|---------------------------------------------------------------|
 | `simulator-core` | Domain model, gravitational physics, numerical integrators, simulation engine | Complete                                                      |
 | `simulator-data` | NASA NeoWs integration, offline cache, JSON persistence | Complete                                                      |
-| `simulator-learning` | Progressive learning scenarios and adaptive hint system | In progress... (L0 and L1 - complete)                         |
+| `simulator-learning` | Progressive learning scenarios and adaptive hint system | Complete)                                                     |
 | `simulator-app` | JavaFX desktop application | UI, rendering, controllers and multi-level presentation shell |
 
 The dependency direction is one-way: `simulator-app` → `{simulator-learning,
@@ -177,13 +177,6 @@ position was revised in review:
 A stable intermediate JavaFX milestone has been reached:
 
 - the computational core and NASA NeoWs data layer are implemented and tested;
-- Level 0 and Level 1 learning backends are implemented;
-- Level 1 physics-informed hints are implemented;
-- Level 0 and Level 1 are integrated into the JavaFX application;
-- the application has persistent level navigation and a shared multi-level
-  presentation architecture;
-- the Level 0 and Level 1 UI flows have been manually exercised through the
-  running JavaFX application.
+- All learning scenarios implemented (L0 - L4);
 
-The next development work focuses on the remaining learning scenarios
-(Levels 2–4), and subsequent empirical evaluation of numerical and trajectory behaviour.
+The next development work focuses on the numerical integrators comparison and UI polishing.

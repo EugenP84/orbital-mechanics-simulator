@@ -34,8 +34,10 @@ import java.util.Map;
  * The core owns and wires its generic control widgets and exposes them individually — as bare values, without captions —
  * so each screen decides how to caption and arrange them; the core never knows how a screen lays out its panel.
  * <p>
- * The view transform is replaceable ({@link #setTransform(ViewTransform)}) so a screen whose physical extent changes with configuration can re-frame the view without rebuilding the core.
- * Advancement and rendering run on the JavaFX Application Thread; the loop runs continuously and advances only while running.
+ * The view may use either a replaceable fixed transform ({@link #setTransform(ViewTransform)}) or a
+ * snapshot-dependent transform provider ({@link #setTransformProvider(Function)}) for a moving camera.
+ * Advancement and rendering run on the JavaFX Application Thread; the loop runs continuously and
+ * advances only while running.
  *
  * @author Eugeniu PLATITA
  */
@@ -47,8 +49,10 @@ public final class SimulationViewCore
     // wall-clock time is discarded, not replayed. A presentation safeguard, not a physics rule.
     private static final double MAX_FRAME_DELTA_SECONDS = 1.0 / 30.0;
     private static final double SECONDS_PER_DAY = 86_400.0;
+    private static final double SECONDS_PER_HOUR = 3_600.0;
     private static final double MIN_TIME_RATE_DAYS_PER_SECOND = 1.0;
     private static final double MAX_TIME_RATE_DAYS_PER_SECOND = 60.0;
+    private static final double TIME_RATE_FORMAT_EPSILON = 1.0e-9;
     private static final double TIME_RATE_SLIDER_WIDTH_PIXELS = 260.0;
 
     private static final Color PRIMARY_TRAIL_COLOUR = Color.web("#4aa3ff", 0.55);
@@ -76,6 +80,7 @@ public final class SimulationViewCore
     private final Slider timeRateSlider;
 
     private ViewTransform transform;
+    private Function<SimulationSnapshot, ViewTransform> transformProvider;
     private AnimationTimer animationTimer;
 
     /**
@@ -173,11 +178,11 @@ public final class SimulationViewCore
         timeRateSlider = new Slider(MIN_TIME_RATE_DAYS_PER_SECOND, MAX_TIME_RATE_DAYS_PER_SECOND, initialDaysPerSecond);
         timeRateSlider.setPrefWidth(TIME_RATE_SLIDER_WIDTH_PIXELS);
         timeRateSlider.valueProperty().addListener((observable, oldValue, newValue) ->
-                {
-                    final double daysPerSecond = newValue.doubleValue();
-                    controls.setSimulatedSecondsPerRealSecond(daysPerSecond * SECONDS_PER_DAY);
-                    timeRateValueLabel.setText(formatTimeRate(daysPerSecond));
-                });
+        {
+            final double daysPerSecond = newValue.doubleValue();
+            controls.setSimulatedSecondsPerRealSecond(daysPerSecond * SECONDS_PER_DAY);
+            timeRateValueLabel.setText(formatTimeRate(daysPerSecond));
+        });
 
         timeRateValueLabel.setText(formatTimeRate(initialDaysPerSecond));
     }
@@ -192,6 +197,58 @@ public final class SimulationViewCore
         secondaryTrail.ifPresent(TrajectoryTrail::clear);
         renderCurrent();
         refreshControls();
+    }
+
+    /**
+     * Configures the presentation time-rate range and selected value in simulated seconds per real
+     * second. The selected value is applied through the existing slider listener, so the controller
+     * remains the owner of the actual presentation rate.
+     *
+     * @param minimumSimulatedSecondsPerRealSecond lower slider bound; positive and finite
+     * @param maximumSimulatedSecondsPerRealSecond upper slider bound; finite and not below minimum
+     * @param selectedSimulatedSecondsPerRealSecond selected value; finite and within the bounds
+     * @throws IllegalArgumentException if the bounds or selected value are invalid
+     */
+    public void configureTimeRate(
+            final double minimumSimulatedSecondsPerRealSecond,
+            final double maximumSimulatedSecondsPerRealSecond,
+            final double selectedSimulatedSecondsPerRealSecond)
+    {
+        if (!Double.isFinite(minimumSimulatedSecondsPerRealSecond)
+                || minimumSimulatedSecondsPerRealSecond <= 0.0)
+        {
+            throw new IllegalArgumentException(
+                    "minimum simulated seconds per real second must be positive and finite");
+        }
+        if (!Double.isFinite(maximumSimulatedSecondsPerRealSecond)
+                || maximumSimulatedSecondsPerRealSecond
+                < minimumSimulatedSecondsPerRealSecond)
+        {
+            throw new IllegalArgumentException(
+                    "maximum simulated seconds per real second must be finite and not below minimum");
+        }
+        if (!Double.isFinite(selectedSimulatedSecondsPerRealSecond)
+                || selectedSimulatedSecondsPerRealSecond
+                < minimumSimulatedSecondsPerRealSecond
+                || selectedSimulatedSecondsPerRealSecond
+                > maximumSimulatedSecondsPerRealSecond)
+        {
+            throw new IllegalArgumentException(
+                    "selected simulated seconds per real second must be within the configured range");
+        }
+
+        final double minimumDaysPerSecond =
+                minimumSimulatedSecondsPerRealSecond / SECONDS_PER_DAY;
+        final double maximumDaysPerSecond =
+                maximumSimulatedSecondsPerRealSecond / SECONDS_PER_DAY;
+        final double selectedDaysPerSecond =
+                selectedSimulatedSecondsPerRealSecond / SECONDS_PER_DAY;
+
+        timeRateSlider.setMin(minimumDaysPerSecond);
+        timeRateSlider.setMax(maximumDaysPerSecond);
+        timeRateSlider.setValue(selectedDaysPerSecond);
+        controls.setSimulatedSecondsPerRealSecond(selectedSimulatedSecondsPerRealSecond);
+        timeRateValueLabel.setText(formatTimeRate(selectedDaysPerSecond));
     }
 
     private AnimationTimer createTimer()
@@ -276,6 +333,12 @@ public final class SimulationViewCore
 
     private static String formatTimeRate(final double daysPerSecond)
     {
+        if (daysPerSecond < 1.0)
+        {
+            final double hoursPerSecond = daysPerSecond * SECONDS_PER_DAY / SECONDS_PER_HOUR;
+            final String unit = Math.abs(hoursPerSecond - 1.0) < TIME_RATE_FORMAT_EPSILON ? "hour" : "hours";
+            return String.format(Locale.ROOT, "%.0f %s / second", hoursPerSecond, unit);
+        }
         return String.format(Locale.ROOT, "%.0f days / second", daysPerSecond);
     }
 
@@ -317,12 +380,14 @@ public final class SimulationViewCore
 
     private void renderSnapshot(final SimulationSnapshot snapshot)
     {
+        final ViewTransform frameTransform = transformFor(snapshot);
+
         if (secondaryTrail.isEmpty())
         {
             renderer.render(
                     graphics,
                     snapshot,
-                    transform,
+                    frameTransform,
                     trail.points());
             return;
         }
@@ -332,7 +397,7 @@ public final class SimulationViewCore
         renderer.render(
                 graphics,
                 snapshot,
-                transform,
+                frameTransform,
                 trail.points(),
                 PRIMARY_TRAIL_COLOUR,
                 secondaryTrail.orElseThrow().points(),
@@ -378,6 +443,23 @@ public final class SimulationViewCore
     public void setTransform(final ViewTransform newTransform)
     {
         this.transform = Objects.requireNonNull(newTransform, "newTransform must not be null");
+        this.transformProvider = null;
+    }
+
+    /**
+     * Supplies a snapshot-dependent view transform for moving-camera presentation. The provider is
+     * evaluated once for each rendered committed snapshot and does not alter simulation coordinates.
+     * A later {@link #setTransform(ViewTransform)} call restores fixed-transform behaviour.
+     *
+     * @param newTransformProvider maps each committed snapshot to its frame transform; never null and
+     *                             must never return null
+     */
+    public void setTransformProvider(
+            final Function<SimulationSnapshot, ViewTransform> newTransformProvider)
+    {
+        this.transformProvider = Objects.requireNonNull(
+                newTransformProvider,
+                "newTransformProvider must not be null");
     }
 
     /**
@@ -457,5 +539,23 @@ public final class SimulationViewCore
     public Label timeRateValueLabel()
     {
         return timeRateValueLabel;
+    }
+
+    /**
+     * Resolves the transform for one committed snapshot. A configured provider is evaluated once per
+     * rendered frame; otherwise the current fixed transform is used.
+     *
+     * @param snapshot committed state about to be rendered; never null
+     * @return the non-null transform for this frame
+     */
+    private ViewTransform transformFor(final SimulationSnapshot snapshot)
+    {
+        if (transformProvider == null)
+        {
+            return transform;
+        }
+        return Objects.requireNonNull(
+                transformProvider.apply(snapshot),
+                "transform provider must not return null");
     }
 }
