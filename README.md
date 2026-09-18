@@ -178,5 +178,6 @@ A stable intermediate JavaFX milestone has been reached:
 
 - the computational core and NASA NeoWs data layer are implemented and tested;
 - All learning scenarios implemented (L0 - L4);
+- Numerical Integrators Comparison;
 
-The next development work focuses on the numerical integrators comparison and UI polishing.
+The next development work focuses on improvements and UI polishing.
