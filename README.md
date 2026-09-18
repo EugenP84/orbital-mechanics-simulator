@@ -7,177 +7,259 @@ Developed by Eugeniu Platita.
 
 ## Overview
 
-The simulator combines a physics-based N-body gravitational engine, a set of
-progressive interactive learning scenarios, an adaptive hint system, and
-integration with real tracked asteroid data from NASA's NeoWs service. Three
-numerical integration methods — Forward Euler, Velocity Verlet and
-Runge–Kutta 4 — are interchangeable at runtime and can be compared directly for
-accuracy, energy behaviour and computational cost.
+The simulator combines a physics-based small-N gravitational engine,
+progressive interactive learning scenarios, physics-informed adaptive
+feedback, NASA NEO data integration, and numerical-method comparison.
+
+Three numerical integration methods are implemented: Forward Euler,
+Velocity Verlet, and classical fourth-order Runge-Kutta (RK4). A
+dedicated comparison facility runs them from identical initial
+conditions and measures energy behaviour, analytical trajectory error,
+and acceleration-model evaluations.
 
 ## Technology stack
 
-- Java 21 LTS (Eclipse Temurin)
-- JavaFX 21
-- Gradle 8.13 (wrapper included)
-- JUnit 5 (Jupiter)
-- Gson 2.11.0
-- Java `java.net.http.HttpClient` (NeoWs access)
+-   Java 21 LTS (Eclipse Temurin)
+-   JavaFX 21
+-   Gradle 8.13 (wrapper included)
+-   JUnit 5 (Jupiter)
+-   Gson 2.11.0
+-   Java `java.net.http.HttpClient` for NeoWs access
 
 ## Modules
 
-| Module | Responsibility | Status                                                        |
-|---|---|---------------------------------------------------------------|
-| `simulator-core` | Domain model, gravitational physics, numerical integrators, simulation engine | Complete                                                      |
-| `simulator-data` | NASA NeoWs integration, offline cache, JSON persistence | Complete                                                      |
-| `simulator-learning` | Progressive learning scenarios and adaptive hint system | Complete)                                                     |
-| `simulator-app` | JavaFX desktop application | UI, rendering, controllers and multi-level presentation shell |
+  ------------------------------------------------------------------------
+  Module                   Responsibility          Current status
+  ------------------------ ----------------------- -----------------------
+  `simulator-core`         Domain model, Newtonian Implemented and tested
+                           gravity, numerical      
+                           integrators,            
+                           orbital-state analysis  
+                           and simulation engine   
 
-The dependency direction is one-way: `simulator-app` → `{simulator-learning,
-simulator-data}` → `simulator-core`. The core depends on nothing outside the
-JDK and is free of JavaFX and of any external-service concern.
+  `simulator-data`         NASA NeoWs integration, Implemented and tested
+                           provider-neutral NEO    
+                           data, offline support   
+                           and HTTP transport      
+
+  `simulator-learning`     Scenario lifecycle,     L0, L1, L3 and L4
+                           learning scenarios and  implemented; L2 remains
+                           adaptive feedback       to be implemented
+
+  `simulator-evaluation`   Controlled              Implemented and tested
+                           numerical-integrator    
+                           comparison and          
+                           measurement             
+
+  `simulator-app`          JavaFX application,     Implemented for the
+                           rendering, controls,    currently available
+                           navigation and          scenarios and
+                           comparison UI           comparison facility
+  ------------------------------------------------------------------------
+
+The architecture keeps the deterministic computational core independent
+of JavaFX and external services.
 
 ### `simulator-core`
 
-A self-contained, deterministic computational core, organised into five
-packages:
+The computational core contains:
 
-- `math` — immutable `Vector3D` and `StateVector` value types, physical
-  constants.
-- `model` — `CelestialBody` definitions and the runtime `SimulationBody`
-  aggregate (immutable definition + mutable committed state).
-- `physics` — Newtonian gravity, energy diagnostics, and the N-body
-  acceleration model behind an `AccelerationModel` abstraction.
-- `integrator` — the `Integrator` strategy and its three implementations,
-  each a pure transformer of immutable state snapshots.
-- `simulation` — the `SimulationEngine`, which owns committed state, commits
-  atomically, separates numerical timestep from presentation speed, and
-  publishes immutable snapshots to observers.
+-   `math` --- immutable `Vector3D` and `StateVector` value types and
+    physical constants;
+-   `model` --- celestial-body definitions and runtime simulation-body
+    state;
+-   `physics` --- Newtonian gravity, energy diagnostics and N-body
+    acceleration evaluation behind `AccelerationModel`;
+-   `integrator` --- the common `Integrator` contract and Forward Euler,
+    Velocity Verlet and RK4 implementations;
+-   `simulation` --- committed simulation state, fixed numerical
+    timesteps, atomic state advancement and immutable snapshots;
+-   orbital-state analysis used by learning-scenario evaluation.
 
-The numerical methods are validated to their theoretical convergence orders,
-and the physics is checked against known reference values (Earth surface
-gravity, the Sun–Earth gravitational force, circular-orbit closure).
+The physics and numerical layers are covered by automated tests,
+including known-value gravitational checks and numerical-integration
+validation.
 
 ### `simulator-data`
 
-Integration with NASA's NeoWs (Near Earth Object Web Service), built around a trust boundary that keeps the unreliable, externally-owned data representation away from the deterministic core:
+NASA NeoWs integration is isolated from the deterministic core by a
+provider boundary. The module includes provider-neutral SI-unit data,
+NASA-specific parsing, live HTTP access, bundled offline data, explicit
+external-service failure handling, and an injectable HTTP transport seam
+for deterministic tests.
 
-- A provider abstraction (NeoDataProvider) behind which live and offline sources are interchangeable.
-- NASA-specific DTOs kept private to the adapter; retrieved JSON is normalised into provider-neutral, SI-unit types before it crosses the module boundary.
-- A bundled offline dataset (a genuine captured NeoWs response) served through the same parser as live data, with explicit provenance (live vs cached) and source-capture timestamps.
-- Cause-based failure classification: transport failures, rate limiting, server errors and malformed external data fall back to the offline dataset, while configuration errors and internal defects surface rather than being masked.
-- An injectable HTTP transport seam, so every response class is tested deterministically offline; a real HttpClient-backed transport performs the actual network I/O.
+Ordinary development and automated testing therefore do not require live
+NASA access.
 
 ### `simulator-learning`
 
-The learning layer owns scenario lifecycle, observation cadence, completion
-policy and pedagogical feedback without depending on JavaFX.
+The learning layer owns scenario lifecycle, observation cadence,
+completion/failure policy and pedagogical feedback without depending on
+JavaFX.
 
-The currently implemented learning scenarios are:
+#### Learning Scenario L0 --- Planet Creation
 
-#### Level 0 — Planet Creation
+Implemented. The learner configures planet properties and initial
+orbital conditions. L0 is introductory and does not impose a physical
+success/failure evaluation or use adaptive hints.
 
-The learner configures:
+#### Learning Scenario L1 --- Stable Orbit
 
-- planet mass;
-- planet radius;
-- initial orbital distance;
-- initial tangential speed.
+Implemented. The learner adjusts the initial tangential speed of a
+planet around a star and attempts to establish a near-circular stable
+orbit. Evaluation uses quantities derived from the simulated state, and
+physics-informed rules provide adaptive guidance.
 
-Level 0 has no learner failure condition and no adaptive hints. It introduces
-the physical parameter space before imposing an orbital objective.
+#### Learning Scenario L2 --- Planet Comparison
 
-#### Level 1 — Stable Orbit
+Not yet implemented. L2 remains part of the planned five-scenario
+learning sequence and is the remaining scenario implementation task.
 
-The learner adjusts the initial tangential speed of a planet around a star and
-attempts to produce a near-circular stable orbit.
+#### Learning Scenario L3 --- Gravitational Perturbation
 
-Assessment uses orbital quantities derived from the simulated state, including
-bound/unbound energy, eccentricity, revolution progress and numerical-energy
-integrity. A rule-based hint engine provides physics-informed guidance based on
-the configured launch speed and simulated orbital state.
+Implemented. L3 provides an interactive gravitational-perturbation
+scenario using the common simulation and learning infrastructure.
 
-Scenario advancement remains owned by `ScenarioSession`. Numerical timestep,
-learning observation cadence and JavaFX presentation cadence are kept
-separate.
+#### Learning Scenario L4 --- Near-Earth Object
+
+Implemented. L4 provides the NEO-focused scenario while keeping
+simulation-model and external-data concerns separated.
+
+### `simulator-evaluation`
+
+The evaluation module provides a JavaFX-independent numerical-integrator
+comparison experiment. The canonical in-application comparison uses:
+
+-   a fully coupled Sun-Earth-like two-body system;
+-   identical centre-of-mass initial conditions for every method;
+-   a fixed timestep of 21,600 seconds (6 hours);
+-   1,461 committed steps (365.25 simulated days);
+-   a fresh run for each integrator.
+
+It measures maximum relative total-mechanical-energy deviation, maximum
+relative-trajectory error against an analytical circular-orbit
+reference, and actual acceleration-model evaluations.
+
+The same comparison logic supports incremental execution for JavaFX
+presentation and headless execution for controlled evaluation.
 
 ### `simulator-app`
 
-The JavaFX application currently provides a working vertical slice for Levels
-0 and 1.
+The JavaFX application provides the presentation layer for the
+implemented learning scenarios and the numerical-integrator comparison.
+Its architecture includes the `Main` application host and persistent
+navigation, the `LevelScreen` screen contract, shared rendering and
+trajectory visualisation, level-specific controls/controllers, and a
+dedicated comparison screen.
 
-The presentation architecture consists of:
-
-- `Main` — the thin application host and persistent level navigation;
-- `LevelScreen` — the contract through which each level exposes its simulation
-  and controls regions;
-- `SimulationViewCore` — shared animation, rendering, trajectory and generic
-  simulation-control behaviour;
-- `ScenarioControls` — the level-agnostic controller surface used by the
-  presentation core;
-- `ScenarioPlayer` — shared lifecycle and presentation-speed behaviour used by
-  level-specific controllers;
-- `SimulationRenderer` and `TrajectoryTrail` — Canvas rendering and bounded
-  trajectory visualisation.
-
-The host places the active simulation in the centre and a vertical control
-panel on the right. Level navigation remains persistent while level-specific
-screens are rebuilt on switching. The side panel uses vertically stacked
-controls and readouts so labels and status information remain legible on
-smaller displays.
+The five planned learning scenarios are conceptually separate from the
+numerical-integrator comparison; the comparison is not an L5 scenario.
+Presentation speed is also separate from numerical timestep.
 
 ## Building and running
+
+From the project root:
 
     ./gradlew build
     ./gradlew :simulator-app:run
 
-Requires JDK 21. The Gradle wrapper handles the Gradle version.
+On Windows:
 
-Run the core test suite alone with:
+    .\gradlew.bat build
+    .\gradlew.bat :simulator-app:run
+
+JDK 21 is required. The Gradle wrapper supplies the configured Gradle
+version.
+
+Complete test suite:
+
+    ./gradlew test
+
+Core tests only:
 
     ./gradlew :simulator-core:test
 
-### NASA NeoWs access
+Evaluation tests only:
 
-Live NEO data requires a free NASA API key from
-[api.nasa.gov](https://api.nasa.gov). The key is supplied through environment
-or configuration and is never committed to source control. It is **not**
-required to build the project or to run the ordinary test suite: development
-and testing proceed against a bundled cached dataset, and the application
-remains usable offline. A live NASA call is exercised only by an explicitly
-opt-in integration test.
+    ./gradlew :simulator-evaluation:test
+
+## NASA NeoWs access
+
+Live NeoWs access requires a NASA API key, which must not be committed
+to the repository. Ordinary builds and automated tests do not require
+live NASA access because the data layer supports deterministic offline
+operation.
 
 ## Design decisions
 
-The architecture is recorded as a series of Architecture Decision Records
-(ADRs) in `docs/decisions/`, several of which document where an initial
-position was revised in review:
+Architecture and significant design choices are documented as
+Architecture Decision Records (ADRs) under `docs/decisions/`.
 
-| ADR     | Decision |
-|---------|---|
-| ADR-001 | Technology stack and multi-module structure |
-| ADR-002 | Celestial body model: definition–state separation |
-| ADR-003 | Newtonian gravity model |
-| ADR-004 | Acceleration aggregation and arbitrary-state evaluation |
-| ADR-005 | Snapshot-based numerical integration contract |
-| ADR-006 | Simulation engine execution model |
-| ADR-007 | External NEO data acquisition and trust boundary |
-| ADR-008 | Learning Scenario Architecture and Evaluation Cadence |
-| ADR-009 | Orbital State Analysis and Element Semantics |
-| ADR-010 | JavaFX presentation architecture and multi-level shell |
+  -----------------------------------------------------------------------
+  ADR                                 Decision area
+  ----------------------------------- -----------------------------------
+  ADR-001                             Technology stack and multi-module
+                                      structure
+
+  ADR-002                             Celestial-body definition/state
+                                      separation
+
+  ADR-003                             Newtonian gravity model
+
+  ADR-004                             Acceleration aggregation and
+                                      restricted-body policy
+
+  ADR-005                             Snapshot-based numerical
+                                      integration
+
+  ADR-006                             Simulation-engine execution model
+
+  ADR-007                             External NEO data acquisition and
+                                      trust boundary
+
+  ADR-008                             Learning-scenario architecture and
+                                      evaluation cadence
+
+  ADR-009                             Orbital-state analysis and element
+                                      semantics
+
+  ADR-010                             JavaFX presentation architecture
+                                      and multi-level shell
+
+  ADR-011                             L4 NEO simulation and validation
+                                      design
+
+  ADR-012                             Numerical-integrator runtime
+                                      exploration and formal comparison
+  -----------------------------------------------------------------------
 
 ## Documentation
 
-- [Project structure and design decisions](docs/architecture/project-structure.md)
-- [Architecture Decision Records](docs/decisions/)
+-   [Project structure and design
+    decisions](docs/architecture/project-structure.md)
+-   [Architecture Decision Records](docs/decisions/)
 
-## Status
+## Current status
 
-**Phase 3 — Development.**
+The project is in the development and evaluation stage.
 
-A stable intermediate JavaFX milestone has been reached:
+Implemented and substantially validated:
 
-- the computational core and NASA NeoWs data layer are implemented and tested;
-- All learning scenarios implemented (L0 - L4);
-- Numerical Integrators Comparison;
+-   deterministic Newtonian simulation core;
+-   Forward Euler, Velocity Verlet and RK4 integrators;
+-   orbital-state analysis;
+-   NASA NeoWs data layer with offline support;
+-   Learning Scenarios L0, L1, L3 and L4;
+-   physics-informed adaptive feedback where required by the scenario
+    design;
+-   JavaFX multi-scenario application;
+-   headless and interactive numerical-integrator comparison.
 
-The next development work focuses on improvements and UI polishing.
+Remaining significant work:
+
+-   implementation and integration of Learning Scenario L2;
+-   final verification and limited UI polishing.
+
+The current priority is to avoid unnecessary feature expansion and
+concentrate on the remaining planned scope, formal evaluation and
+project reporting.
