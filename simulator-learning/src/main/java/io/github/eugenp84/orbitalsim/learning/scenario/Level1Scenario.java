@@ -2,14 +2,16 @@ package io.github.eugenp84.orbitalsim.learning.scenario;
 
 import io.github.eugenp84.orbitalsim.core.integrator.VelocityVerletIntegrator;
 import io.github.eugenp84.orbitalsim.core.math.PhysicalConstants;
-import io.github.eugenp84.orbitalsim.core.math.StateVector;
+//import io.github.eugenp84.orbitalsim.core.math.StateVector;
 import io.github.eugenp84.orbitalsim.core.math.Vector3D;
 import io.github.eugenp84.orbitalsim.core.model.CelestialBody;
 import io.github.eugenp84.orbitalsim.core.model.CelestialBodyType;
 import io.github.eugenp84.orbitalsim.core.physics.GravitationalBodyConfig;
 import io.github.eugenp84.orbitalsim.core.physics.NBodyAccelerationCalculator;
-import io.github.eugenp84.orbitalsim.core.simulation.BodySnapshot;
+//import io.github.eugenp84.orbitalsim.core.simulation.BodySnapshot;
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationEngine;
+
+import io.github.eugenp84.orbitalsim.core.simulation.TwoBodyInitialState;
 
 import java.util.List;
 
@@ -62,8 +64,22 @@ public final class Level1Scenario {
             0.0,        // minimumSurfaceClearanceMetres: surfaces touching is failure
             1.0e-3);    // maximumRelativeEnergyDrift: ~7 orders above measured Verlet drift
 
-    private final double gravitationalParameter =
-            PhysicalConstants.GRAVITATIONAL_CONSTANT * (STAR_MASS + PLANET_MASS);
+    private final double gravitationalParameter = PhysicalConstants.GRAVITATIONAL_CONSTANT * (STAR_MASS + PLANET_MASS);
+
+    private static final CelestialBody STAR = new CelestialBody(
+            STAR_ID,
+            "Star",
+            CelestialBodyType.STAR,
+            STAR_MASS,
+            STAR_RADIUS);
+
+    private static final CelestialBody PLANET = new CelestialBody(
+            PLANET_ID,
+            "Planet",
+            CelestialBodyType.PLANET,
+            PLANET_MASS,
+            PLANET_RADIUS);
+
 
     /** The circular speed at this scenario's orbital radius: the learner's target. */
     public double circularSpeedMetresPerSecond() {
@@ -96,7 +112,11 @@ public final class Level1Scenario {
         Vector3D relativeVelocity = new Vector3D(0.0, initialTangentialSpeed, 0.0);
 
         SimulationEngine engine = new SimulationEngine(
-                centreOfMassBodies(relativePosition, relativeVelocity),
+                TwoBodyInitialState.centreOfMass(
+                        STAR,
+                        PLANET,
+                        relativePosition,
+                        relativeVelocity),
                 coupledTwoBodyGravity(),
                 TIME_STEP_SECONDS,
                 new VelocityVerletIntegrator());
@@ -124,26 +144,26 @@ public final class Level1Scenario {
     /**
      * Places the two bodies either side of the origin in inverse mass proportion, so total momentum is zero and the total mechanical energy carries no bulk kinetic term.
      */
-    private static List<BodySnapshot> centreOfMassBodies(Vector3D relativePosition, Vector3D relativeVelocity)
-    {
-        double totalMass = STAR_MASS + PLANET_MASS;
-        double starFraction = -PLANET_MASS / totalMass;
-        double planetFraction = STAR_MASS / totalMass;
-
-        return List.of(
-                new BodySnapshot(
-                        new CelestialBody(STAR_ID, "Star", CelestialBodyType.STAR,
-                                STAR_MASS, STAR_RADIUS),
-                        new StateVector(
-                                relativePosition.multiply(starFraction),
-                                relativeVelocity.multiply(starFraction))),
-                new BodySnapshot(
-                        new CelestialBody(PLANET_ID, "Planet", CelestialBodyType.PLANET,
-                                PLANET_MASS, PLANET_RADIUS),
-                        new StateVector(
-                                relativePosition.multiply(planetFraction),
-                                relativeVelocity.multiply(planetFraction))));
-    }
+//    private static List<BodySnapshot> centreOfMassBodies(Vector3D relativePosition, Vector3D relativeVelocity)
+//    {
+//        double totalMass = STAR_MASS + PLANET_MASS;
+//        double starFraction = -PLANET_MASS / totalMass;
+//        double planetFraction = STAR_MASS / totalMass;
+//
+//        return List.of(
+//                new BodySnapshot(
+//                        new CelestialBody(STAR_ID, "Star", CelestialBodyType.STAR,
+//                                STAR_MASS, STAR_RADIUS),
+//                        new StateVector(
+//                                relativePosition.multiply(starFraction),
+//                                relativeVelocity.multiply(starFraction))),
+//                new BodySnapshot(
+//                        new CelestialBody(PLANET_ID, "Planet", CelestialBodyType.PLANET,
+//                                PLANET_MASS, PLANET_RADIUS),
+//                        new StateVector(
+//                                relativePosition.multiply(planetFraction),
+//                                relativeVelocity.multiply(planetFraction))));
+//    }
 
     /** Both bodies act on each other: the fully coupled two-body model. */
     private static NBodyAccelerationCalculator coupledTwoBodyGravity()

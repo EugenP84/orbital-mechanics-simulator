@@ -7,6 +7,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Separator;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -31,7 +32,7 @@ import java.util.function.Supplier;
  */
 public final class Main extends Application
 {
-    private static final String WINDOW_TITLE = "Orbital Mechanics Simulator";
+    private static final String WINDOW_TITLE = "Orbital Mechanics Simulator (developed by Eugeniu Platita)";
     private static final double NAV_BAR_SPACING_PIXELS = 8.0;
     private static final double SIDE_PANEL_SPACING_PIXELS = 6.0;
     private static final double SIDE_PANEL_PADDING_PIXELS = 6.0;
@@ -50,29 +51,62 @@ public final class Main extends Application
 
         final ToggleButton level0Button = new ToggleButton("L0");
         level0Button.setToggleGroup(group);
-        level0Button.setOnAction(event -> switchTo(Level0Screen::new, "Level 0", level0Button));
+        level0Button.setTooltip(new Tooltip("Learning Scenario L0 - Create a Planet"));
+        level0Button.setOnAction(
+                event -> switchTo(Level0Screen::new,"Learning Scenario L0 - Create a Planet", level0Button));
 
         final ToggleButton level1Button = new ToggleButton("L1");
         level1Button.setToggleGroup(group);
         level1Button.setSelected(true);
-        level1Button.setOnAction(event -> switchTo(Level1Screen::new, "Level 1", level1Button));
+        level1Button.setTooltip(new Tooltip("Learning Scenario L1 - Stable Orbit"));
+        level1Button.setOnAction(
+                event -> switchTo(
+                        Level1Screen::new,
+                        "Learning Scenario L1 - Stable Orbit",
+                        level1Button));
+
+        final ToggleButton level2Button = new ToggleButton("L2");
+        level2Button.setToggleGroup(group);
+        level2Button.setTooltip(new Tooltip("Learning Scenario L2 - Planet Comparison"));
+        //level2Button.setDisable(true);
 
         final ToggleButton level3Button = new ToggleButton("L3");
         level3Button.setToggleGroup(group);
-        level3Button.setOnAction(event -> switchTo(Level3Screen::new, "Level 3", level3Button));
+        level3Button.setTooltip(new Tooltip("Learning Scenario L3 - Gravitational Perturbation"));
+        level3Button.setOnAction(
+                event -> switchTo(
+                        Level3Screen::new,
+                        "Learning Scenario L3 - Gravitational Perturbation",
+                        level3Button));
 
         final ToggleButton level4Button = new ToggleButton("L4");
         level4Button.setToggleGroup(group);
-        level4Button.setOnAction(event -> switchTo(Level4Screen::new, "Level 4", level4Button));
+        level4Button.setTooltip(new Tooltip("Learning Scenario L4 - Near-Earth Object Observation"));
+        level4Button.setOnAction(
+                event -> switchTo(
+                        Level4Screen::new,
+                        "Learning Scenario L4 - Near-Earth Object Observation",
+                        level4Button));
+
+        final ToggleButton comparisonButton = new ToggleButton("Compare");
+        comparisonButton.setToggleGroup(group);
+        comparisonButton.setTooltip(new Tooltip("Numerical Integrator Comparison"));
+        comparisonButton.setOnAction(
+                event -> switchTo(
+                        IntegratorComparisonScreen::new,
+                        "Numerical Integrator Comparison",
+                        comparisonButton));
 
         currentLevelButton = level1Button;
 
         final HBox bar = new HBox(
-                        NAV_BAR_SPACING_PIXELS,
-                        level0Button,
-                        level1Button,
-                        level3Button,
-                        level4Button);
+                NAV_BAR_SPACING_PIXELS,
+                level0Button,
+                level1Button,
+                level2Button,
+                level3Button,
+                level4Button,
+                comparisonButton);
 
         bar.setAlignment(Pos.CENTER_LEFT);
         return bar;
@@ -83,8 +117,7 @@ public final class Main extends Application
      *
      * @param args command-line arguments, forwarded unchanged to JavaFX
      */
-    public static void main(final String[] args)
-    {
+    public static void main(final String[] args) {
         launch(args);
     }
 
@@ -93,7 +126,7 @@ public final class Main extends Application
         currentScreen = screen;
         host.setCenter(screen.simulationView());
         sidePanel.getChildren().setAll(navigationBar, new Separator(), screen.controlsView());
-        stage.setTitle(WINDOW_TITLE + " — " + levelName);
+        stage.setTitle(WINDOW_TITLE + " | " + levelName);
         screen.activate();
     }
 
@@ -115,7 +148,7 @@ public final class Main extends Application
         currentScreen = new Level1Screen();
         host.setCenter(currentScreen.simulationView());
         sidePanel.getChildren().setAll(navigationBar, new Separator(), currentScreen.controlsView());
-        stage.setTitle(WINDOW_TITLE + " — Level 1");
+        stage.setTitle(WINDOW_TITLE + " | Learning Scenario L1 - Stable Orbit");
         stage.setScene(new Scene(host));
         stage.show();
         currentScreen.activate();
