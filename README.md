@@ -32,34 +32,22 @@ and acceleration-model evaluations.
 Module                   Responsibility          Current status
   ------------------------ ----------------------- -----------------------
 `simulator-core`         Domain model, Newtonian Implemented and tested
-gravity, numerical      
-integrators,            
-orbital-state analysis  
-and simulation engine
+gravity, numerical integrators, orbital-state analysis and simulation engine
 
 `simulator-data`         NASA NeoWs integration, Implemented and tested
-provider-neutral NEO    
-data, offline support,  
-trusted planet reference
-data and HTTP transport
+provider-neutral NEO data, offline support, trusted planet reference  data and HTTP transport
 
 `simulator-learning`     Scenario lifecycle,     L0–L4 implemented and
-learning scenarios and  tested
-adaptive feedback
+learning scenarios and  tested adaptive feedback
 
 `simulator-evaluation`   Controlled              Implemented and tested
-numerical-integrator    
-comparison and          
-measurement
+numerical-integrator comparison and measurement
 
 `simulator-app`          JavaFX application,     Implemented for the
-rendering, controls,    currently available
-navigation and          scenarios and
-comparison UI           comparison facility
+rendering, controls, currently available  navigation and scenarios and  comparison UI           comparison facility
   ------------------------------------------------------------------------
 
-The architecture keeps the deterministic computational core independent
-of JavaFX and external services.
+The architecture keeps the deterministic computational core independent of JavaFX and external services.
 
 ### `simulator-core`
 
@@ -77,9 +65,7 @@ The computational core contains:
     timesteps, atomic state advancement and immutable snapshots;
 -   orbital-state analysis used by learning-scenario evaluation.
 
-The physics and numerical layers are covered by automated tests,
-including known-value gravitational checks and numerical-integration
-validation.
+The physics and numerical layers are covered by automated tests, including known-value gravitational checks and numerical-integration validation.
 
 ### `simulator-data`
 
