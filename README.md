@@ -44,7 +44,8 @@ learning scenarios and  tested adaptive feedback
 numerical-integrator comparison and measurement
 
 `simulator-app`          JavaFX application,     Implemented for the
-rendering, controls, currently available  navigation and scenarios and  comparison UI           comparison facility
+rendering, controls, currently available  navigation and scenarios and  comparison UI           comparison facility.  
+
   ------------------------------------------------------------------------
 
 The architecture keeps the deterministic computational core independent of JavaFX and external services.
