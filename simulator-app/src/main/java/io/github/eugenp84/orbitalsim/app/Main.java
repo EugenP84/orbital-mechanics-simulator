@@ -1,5 +1,6 @@
 package io.github.eugenp84.orbitalsim.app;
 
+import io.github.eugenp84.orbitalsim.learning.scenario.Level2PlanetProfile;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -12,21 +13,13 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-
+import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
  * JavaFX entry point and host for the orbital mechanics simulator.
  * <p>
- * The host owns the window shell and persistent level navigation.
- * Each {@link LevelScreen} supplies a simulation region and a controls region;
- * the host places the simulation region in the centre and, on the right, a vertical panel holding the persistent navigation above the screen's controls.
- * The host composes JavaFX regions and manages screen lifecycle; it knows nothing of how a screen builds its simulation or controls.
- * <p>
- * Screens are rebuilt fresh on each switch. The replacement screen is constructed before the current screen is deactivated;
- * if construction fails, the current screen remains operational and the previous navigation selection is restored.
- * Failures during subsequent lifecycle or installation operations propagate.
- * Cross-level continuity (e.g. a learner-created body carried forward) is a future model-layer concern, not screen state.
+ * The host owns the window shell, persistent level navigation and the minimal cross-level state needed for the L0-to-L2 learning progression.
  *
  * @author Eugeniu PLATITA
  */
@@ -37,6 +30,7 @@ public final class Main extends Application
     private static final double SIDE_PANEL_SPACING_PIXELS = 6.0;
     private static final double SIDE_PANEL_PADDING_PIXELS = 6.0;
     private static final double SIDE_PANEL_WIDTH_PIXELS = 300.0;
+
     private final BorderPane host = new BorderPane();
     private final VBox sidePanel = new VBox(SIDE_PANEL_SPACING_PIXELS);
 
@@ -44,6 +38,7 @@ public final class Main extends Application
     private LevelScreen currentScreen;
     private ToggleButton currentLevelButton;
     private HBox navigationBar;
+    private Level2PlanetProfile learnerPlanet;
 
     private HBox buildNavigationBar()
     {
@@ -53,7 +48,10 @@ public final class Main extends Application
         level0Button.setToggleGroup(group);
         level0Button.setTooltip(new Tooltip("Learning Scenario L0 - Create a Planet"));
         level0Button.setOnAction(
-                event -> switchTo(Level0Screen::new,"Learning Scenario L0 - Create a Planet", level0Button));
+                event -> switchTo(
+                        () -> new Level0Screen(this::rememberLearnerPlanet),
+                        "Learning Scenario L0 - Create a Planet",
+                        level0Button));
 
         final ToggleButton level1Button = new ToggleButton("L1");
         level1Button.setToggleGroup(group);
@@ -68,11 +66,16 @@ public final class Main extends Application
         final ToggleButton level2Button = new ToggleButton("L2");
         level2Button.setToggleGroup(group);
         level2Button.setTooltip(new Tooltip("Learning Scenario L2 - Planet Comparison"));
-        //level2Button.setDisable(true);
+        level2Button.setOnAction(
+                event -> switchTo(
+                        () -> new Level2Screen(Optional.ofNullable(learnerPlanet)),
+                        "Learning Scenario L2 - Planet Comparison",
+                        level2Button));
 
         final ToggleButton level3Button = new ToggleButton("L3");
         level3Button.setToggleGroup(group);
-        level3Button.setTooltip(new Tooltip("Learning Scenario L3 - Gravitational Perturbation"));
+        level3Button.setTooltip(
+                new Tooltip("Learning Scenario L3 - Gravitational Perturbation"));
         level3Button.setOnAction(
                 event -> switchTo(
                         Level3Screen::new,
@@ -81,7 +84,8 @@ public final class Main extends Application
 
         final ToggleButton level4Button = new ToggleButton("L4");
         level4Button.setToggleGroup(group);
-        level4Button.setTooltip(new Tooltip("Learning Scenario L4 - Near-Earth Object Observation"));
+        level4Button.setTooltip(
+                new Tooltip("Learning Scenario L4 - Near-Earth Object Observation"));
         level4Button.setOnAction(
                 event -> switchTo(
                         Level4Screen::new,
@@ -107,18 +111,17 @@ public final class Main extends Application
                 level3Button,
                 level4Button,
                 comparisonButton);
-
         bar.setAlignment(Pos.CENTER_LEFT);
         return bar;
     }
 
-    /**
-     * Standard Java entry point.
-     *
-     * @param args command-line arguments, forwarded unchanged to JavaFX
-     */
-    public static void main(final String[] args) {
+    public static void main(final String[] args)
+    {
         launch(args);
+    }
+
+    private void rememberLearnerPlanet(final Level2PlanetProfile planet) {
+        this.learnerPlanet = planet;
     }
 
     private void showLevel(final LevelScreen screen, final String levelName)
@@ -130,12 +133,6 @@ public final class Main extends Application
         screen.activate();
     }
 
-    /**
-     * Shows the host window with the side panel and the initial (Level 1) screen.
-     * The initial screen is activated only after the scene is set and the stage shown, matching the verified screen lifecycle.
-     *
-     * @param primaryStage the primary stage supplied by JavaFX; never null
-     */
     @Override
     public void start(final Stage primaryStage)
     {
@@ -154,21 +151,21 @@ public final class Main extends Application
         currentScreen.activate();
     }
 
-    /**
-     * Deactivates the current screen when the application shuts down.
-     */
     @Override
-    public void stop() {
+    public void stop()
+    {
         if (currentScreen != null)
         {
             currentScreen.deactivate();
         }
     }
 
-    private void switchTo(final Supplier<LevelScreen> screenFactory, final String levelName, final ToggleButton source)
+    private void switchTo(
+            final Supplier<LevelScreen> screenFactory,
+            final String levelName,
+            final ToggleButton source)
     {
-        if (!source.isSelected())
-        {
+        if (!source.isSelected()) {
             source.setSelected(true);
             return;
         }
@@ -189,5 +186,5 @@ public final class Main extends Application
                 currentLevelButton.setSelected(true);
             }
         }
-    }//----------- end of switchTo() ==================================
+    }//---------========= enf of switchTo() -------------------------------
 }

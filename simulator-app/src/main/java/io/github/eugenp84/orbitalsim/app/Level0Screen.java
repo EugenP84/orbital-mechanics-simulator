@@ -8,6 +8,7 @@ import io.github.eugenp84.orbitalsim.core.math.Vector3D;
 import io.github.eugenp84.orbitalsim.core.model.CelestialBodyType;
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level0Scenario;
+import io.github.eugenp84.orbitalsim.learning.scenario.Level2PlanetProfile;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
 import javafx.geometry.Insets;
@@ -22,19 +23,11 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
- * The Level 0 (Planet Creation) screen: the learner sets a planet's mass, radius, orbital distance and tangential speed, sees it created and orbiting, and the scenario completes at the first observation.
- * <p>
- * The generic presentation lives in {@link SimulationViewCore}.
- * this screen supplies Level 0's four parameter sliders and the circular-speed reference, and exposes a simulation region (the canvas) and a vertical controls region.
- * Tangential speed is shown as an absolute value in kilometres per second,
- * not as a fraction of circular speed — introducing velocity as a physical quantity, distinct from Level 1's speed-relative task.
- * <p>
- * The slider value labels track the current selection live; the circular-speed reference describes the
- * currently configured attempt and is updated only on a successful commit, so it is labelled accordingly and does not appear to change mid-drag before the attempt is rebuilt.
- * The view uses a fixed scale across the supported orbital-distance range so different configurations remain visually comparable.
- * Changing orbital distance re-scales the trail sampling but does not re-frame the viewport.
+ * The Level 0 (Planet Creation) screen.
  *
  * @author Eugeniu PLATITA
  */
@@ -48,9 +41,6 @@ public final class Level0Screen implements LevelScreen
     private static final double EARTH_RADIUS = PhysicalConstants.EARTH_RADIUS;
     private static final double ASTRONOMICAL_UNIT = PhysicalConstants.ASTRONOMICAL_UNIT;
     private static final double METRES_PER_SECOND_IN_KILOMETRES = 1_000.0;
-
-    // Pedagogical interaction ranges (not validity bounds). Mass and radius in Earth units;
-    // distance in astronomical units; tangential speed as an absolute value in kilometres per second.
     private static final double MIN_MASS_EARTHS = 0.1;
     private static final double MAX_MASS_EARTHS = 10.0;
     private static final double DEFAULT_MASS_EARTHS = 1.0;
@@ -62,9 +52,6 @@ public final class Level0Screen implements LevelScreen
     private static final double DEFAULT_DISTANCE_AU = 1.0;
     private static final double MIN_SPEED_KILOMETRES_PER_SECOND = 5.0;
     private static final double MAX_SPEED_KILOMETRES_PER_SECOND = 50.0;
-    private static final double VIEW_RADIUS_METRES = 1.15 * MAX_DISTANCE_AU * PhysicalConstants.ASTRONOMICAL_UNIT;
-
-    // Settled-value comparison tolerances, each far smaller than a meaningful slider step, so they absorb floating-point noise without hiding a real change of selection.
     private static final double MASS_EPSILON_KILOGRAMS = 1.0;
     private static final double RADIUS_EPSILON_METRES = 1.0;
     private static final double DISTANCE_EPSILON_METRES = 1.0;
@@ -81,6 +68,7 @@ public final class Level0Screen implements LevelScreen
     private final SimulationViewCore core;
     private final Parent simulationRegion;
     private final Parent controlsRegion;
+    private final Consumer<Level2PlanetProfile> planetCreatedListener;
 
     private Slider massSlider;
     private Slider radiusSlider;
@@ -92,16 +80,23 @@ public final class Level0Screen implements LevelScreen
     private Label speedValueLabel;
     private Label circularReferenceLabel;
 
-    /** Builds the Level 0 screen: its controller, view core, and the simulation and controls regions. */
+    /** Builds Level 0 without a cross-level listener, retained for direct use and tests. */
     public Level0Screen()
     {
+        this(planet -> { });
+    }
+
+    /**
+     * Builds Level 0 and publishes each successfully configured learner planet for Level 2.
+     *
+     * @param planetCreatedListener receives the current learner planet after successful configuration
+     */
+    public Level0Screen(final Consumer<Level2PlanetProfile> planetCreatedListener)
+    {
+        this.planetCreatedListener = Objects.requireNonNull(planetCreatedListener, "planetCreatedListener must not be null");
         this.controller = new Level0Controller(new Level0Scenario());
-
-        this.trail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, controller.configuredDistanceMetres() / TRAIL_SEGMENT_DIVISOR);
-
-        //final ViewTransform transform = transformForDistance(controller.configuredDistanceMetres());
-        final ViewTransform transform = ViewTransform.fitting(CANVAS_WIDTH_PIXELS, CANVAS_HEIGHT_PIXELS,0.0,0.0, VIEW_RADIUS_AU * ASTRONOMICAL_UNIT);
-
+        this.trail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS,controller.configuredDistanceMetres() / TRAIL_SEGMENT_DIVISOR);
+        final ViewTransform transform = ViewTransform.fitting(CANVAS_WIDTH_PIXELS, CANVAS_HEIGHT_PIXELS,0.0, 0.0, VIEW_RADIUS_AU * ASTRONOMICAL_UNIT);
         final Canvas canvas = new Canvas(CANVAS_WIDTH_PIXELS, CANVAS_HEIGHT_PIXELS);
 
         this.core = new SimulationViewCore(
@@ -116,11 +111,12 @@ public final class Level0Screen implements LevelScreen
 
         this.simulationRegion = new StackPane(canvas);
         this.controlsRegion = buildControlPanel();
+
+        publishLearnerPlanet();
     }
 
     @Override
-    public void activate()
-    {
+    public void activate() {
         core.initialiseView();
         core.startLoop();
     }
@@ -130,10 +126,8 @@ public final class Level0Screen implements LevelScreen
         massSlider = buildParameterSlider(MIN_MASS_EARTHS, MAX_MASS_EARTHS, DEFAULT_MASS_EARTHS);
         radiusSlider = buildParameterSlider(MIN_RADIUS_EARTHS, MAX_RADIUS_EARTHS, DEFAULT_RADIUS_EARTHS);
         distanceSlider = buildParameterSlider(MIN_DISTANCE_AU, MAX_DISTANCE_AU, DEFAULT_DISTANCE_AU);
-
         final double defaultSpeedKilometres = controller.configuredTangentialSpeedMetresPerSecond() / METRES_PER_SECOND_IN_KILOMETRES;
         speedSlider = buildParameterSlider(MIN_SPEED_KILOMETRES_PER_SECOND, MAX_SPEED_KILOMETRES_PER_SECOND, defaultSpeedKilometres);
-
         massValueLabel = new Label();
         radiusValueLabel = new Label();
         distanceValueLabel = new Label();
@@ -144,7 +138,6 @@ public final class Level0Screen implements LevelScreen
         registerParameterListeners(radiusSlider, false);
         registerParameterListeners(distanceSlider, true);
         registerParameterListeners(speedSlider, false);
-
         updateSliderValueLabels();
         updateCircularReferenceLabel();
 
@@ -172,8 +165,7 @@ public final class Level0Screen implements LevelScreen
         return controlPanel;
     }
 
-    private Slider buildParameterSlider(final double min, final double max, final double value)
-    {
+    private Slider buildParameterSlider(final double min, final double max, final double value) {
         final Slider slider = new Slider(min, max, value);
         slider.setPrefWidth(PARAMETER_SLIDER_WIDTH_PIXELS);
         return slider;
@@ -186,20 +178,19 @@ public final class Level0Screen implements LevelScreen
         final double distanceMetres = distanceSlider.getValue() * ASTRONOMICAL_UNIT;
         final double speedMetresPerSecond = speedSlider.getValue() * METRES_PER_SECOND_IN_KILOMETRES;
 
-        if (!configurationChanged(massKilograms, radiusMetres, distanceMetres, speedMetresPerSecond))
-        {
+        if (!configurationChanged(massKilograms, radiusMetres, distanceMetres, speedMetresPerSecond)) {
             return;
         }
 
         controller.configureAttempt(massKilograms, radiusMetres, distanceMetres, speedMetresPerSecond);
 
-        if (distanceChanged)
-        {
+        if (distanceChanged) {
             trail.setMinimumSegmentMetres(controller.configuredDistanceMetres() / TRAIL_SEGMENT_DIVISOR);
         }
         core.afterAttemptReplaced();
         updateSliderValueLabels();
         updateCircularReferenceLabel();
+        publishLearnerPlanet();
     }
 
     private boolean configurationChanged(
@@ -208,33 +199,31 @@ public final class Level0Screen implements LevelScreen
             final double distanceMetres,
             final double speedMetresPerSecond)
     {
-        return Math.abs(massKilograms - controller.configuredMassKilograms()) > MASS_EPSILON_KILOGRAMS
-                || Math.abs(radiusMetres - controller.configuredRadiusMetres()) > RADIUS_EPSILON_METRES
-                || Math.abs(distanceMetres - controller.configuredDistanceMetres()) > DISTANCE_EPSILON_METRES
-                || Math.abs(speedMetresPerSecond - controller.configuredTangentialSpeedMetresPerSecond())
+        return Math.abs(massKilograms - controller.configuredMassKilograms())
+                > MASS_EPSILON_KILOGRAMS
+                || Math.abs(radiusMetres - controller.configuredRadiusMetres())
+                > RADIUS_EPSILON_METRES || Math.abs(distanceMetres - controller.configuredDistanceMetres())
+                > DISTANCE_EPSILON_METRES || Math.abs(speedMetresPerSecond
+                - controller.configuredTangentialSpeedMetresPerSecond())
                 > SPEED_EPSILON_METRES_PER_SECOND;
     }
 
     @Override
-    public Parent controlsView()
-    {
+    public Parent controlsView() {
         return controlsRegion;
     }
 
     @Override
-    public void deactivate()
-    {
+    public void deactivate()  {
         core.stopLoop();
     }
 
-    private static VBox labelledValue(final String caption, final Label value)
-    {
+    private static VBox labelledValue(final String caption, final Label value) {
         value.setWrapText(true);
         return new VBox(new Label(caption), value);
     }
 
-    private static String learnerTextFor(final ScenarioTerminationReason reason)
-    {
+    private static String learnerTextFor(final ScenarioTerminationReason reason) {
         return switch (reason)
         {
             case POLICY_COMPLETION -> "planet created";
@@ -246,8 +235,6 @@ public final class Level0Screen implements LevelScreen
 
     private static boolean parametersSelectable(final ScenarioLifecycleState state)
     {
-        // Parameters define the attempt: selectable before it runs or after it finishes, locked while
-        // running or paused (matching Level 1's configuration semantics).
         return state == ScenarioLifecycleState.NOT_STARTED
                 || state == ScenarioLifecycleState.COMPLETED
                 || state == ScenarioLifecycleState.FAILED;
@@ -259,6 +246,11 @@ public final class Level0Screen implements LevelScreen
                 .filter(body -> body.definition().type() == CelestialBodyType.PLANET)
                 .map(body -> body.state().position())
                 .findFirst();
+    }
+
+    private void publishLearnerPlanet()
+    {
+        planetCreatedListener.accept(Level2PlanetProfile.fromMassAndRadius(controller.configuredMassKilograms(), controller.configuredRadiusMetres()));
     }
 
     private void refreshLevelControls()
@@ -276,15 +268,13 @@ public final class Level0Screen implements LevelScreen
         slider.valueProperty().addListener((observable, oldValue, newValue) ->
         {
             updateSliderValueLabels();
-            if (!slider.isValueChanging())
-            {
+            if (!slider.isValueChanging()) {
                 commitConfiguration(distanceChanged);
             }
         });
         slider.valueChangingProperty().addListener((observable, wasChanging, isChanging) ->
         {
-            if (wasChanging && !isChanging)
-            {
+            if (wasChanging && !isChanging) {
                 commitConfiguration(distanceChanged);
             }
         });
@@ -298,25 +288,14 @@ public final class Level0Screen implements LevelScreen
     }
 
     @Override
-    public Parent simulationView()
-    {
+    public Parent simulationView() {
         return simulationRegion;
     }
-
-//    private ViewTransform transformForDistance(final double distanceMetres)
-//    {
-//        return ViewTransform.fitting(
-//                CANVAS_WIDTH_PIXELS,
-//                CANVAS_HEIGHT_PIXELS,
-//                0.0,
-//                0.0,
-//                distanceMetres * VIEW_MARGIN_FACTOR);
-//    }
 
     private void updateCircularReferenceLabel()
     {
         final double circularKilometres = controller.circularSpeedReferenceMetresPerSecond() / METRES_PER_SECOND_IN_KILOMETRES;
-        circularReferenceLabel.setText(String.format(Locale.ROOT, "Circular speed (configured): %.1f km/s", circularKilometres));
+        circularReferenceLabel.setText(String.format(Locale.ROOT,"Circular speed (configured): %.1f km/s", circularKilometres));
     }
 
     private void updateSliderValueLabels()

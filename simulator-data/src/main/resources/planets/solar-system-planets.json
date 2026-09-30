@@ -1,0 +1,96 @@
+{
+  "physicalDataSource": "NASA Goddard Space Flight Center / NSSDCA Planetary Fact Sheets",
+  "physicalDataSourceUrl": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/",
+  "classificationSourceUrl": "https://science.nasa.gov/solar-system/solar-system-facts/",
+  "retrievedDate": "2026-09-30",
+  "planets": [
+    {
+      "name": "Mercury",
+      "type": "Terrestrial",
+      "massKilograms": 3.301e+23,
+      "meanRadiusKilometres": 2439.7,
+      "meanDensityKilogramsPerCubicMetre": 5429.0,
+      "meanSurfaceGravityMetresPerSecondSquared": 3.7,
+      "meanDistanceFromSunMillionKilometres": 57.9,
+      "orbitalPeriodDays": 88.0,
+      "summary": "The closest planet to the Sun and the smallest planet in the Solar System."
+    },
+    {
+      "name": "Venus",
+      "type": "Terrestrial",
+      "massKilograms": 4.8673e+24,
+      "meanRadiusKilometres": 6051.8,
+      "meanDensityKilogramsPerCubicMetre": 5243.0,
+      "meanSurfaceGravityMetresPerSecondSquared": 8.87,
+      "meanDistanceFromSunMillionKilometres": 108.2,
+      "orbitalPeriodDays": 224.7,
+      "summary": "The second planet from the Sun and a terrestrial planet with a solid surface."
+    },
+    {
+      "name": "Earth",
+      "type": "Terrestrial",
+      "massKilograms": 5.9722e+24,
+      "meanRadiusKilometres": 6371.0,
+      "meanDensityKilogramsPerCubicMetre": 5513.0,
+      "meanSurfaceGravityMetresPerSecondSquared": 9.82,
+      "meanDistanceFromSunMillionKilometres": 149.6,
+      "orbitalPeriodDays": 365.2,
+      "summary": "The third planet from the Sun and our home planet."
+    },
+    {
+      "name": "Mars",
+      "type": "Terrestrial",
+      "massKilograms": 6.4169e+23,
+      "meanRadiusKilometres": 3389.5,
+      "meanDensityKilogramsPerCubicMetre": 3934.0,
+      "meanSurfaceGravityMetresPerSecondSquared": 3.73,
+      "meanDistanceFromSunMillionKilometres": 228.0,
+      "orbitalPeriodDays": 687.0,
+      "summary": "The fourth planet from the Sun and the outermost terrestrial planet."
+    },
+    {
+      "name": "Jupiter",
+      "type": "Gas giant",
+      "massKilograms": 1.89813e+27,
+      "meanRadiusKilometres": 69911.0,
+      "meanDensityKilogramsPerCubicMetre": 1326.0,
+      "meanSurfaceGravityMetresPerSecondSquared": 25.92,
+      "meanDistanceFromSunMillionKilometres": 778.5,
+      "orbitalPeriodDays": 4331.0,
+      "summary": "The fifth planet from the Sun and the largest planet in the Solar System."
+    },
+    {
+      "name": "Saturn",
+      "type": "Gas giant",
+      "massKilograms": 5.6832e+26,
+      "meanRadiusKilometres": 58232.0,
+      "meanDensityKilogramsPerCubicMetre": 687.0,
+      "meanSurfaceGravityMetresPerSecondSquared": 11.19,
+      "meanDistanceFromSunMillionKilometres": 1432.0,
+      "orbitalPeriodDays": 10747.0,
+      "summary": "The sixth planet from the Sun and one of the Solar System's two gas giants."
+    },
+    {
+      "name": "Uranus",
+      "type": "Ice giant",
+      "massKilograms": 8.6811e+25,
+      "meanRadiusKilometres": 25362.0,
+      "meanDensityKilogramsPerCubicMetre": 1270.0,
+      "meanSurfaceGravityMetresPerSecondSquared": 9.01,
+      "meanDistanceFromSunMillionKilometres": 2867.0,
+      "orbitalPeriodDays": 30589.0,
+      "summary": "The seventh planet from the Sun and one of the Solar System's two ice giants."
+    },
+    {
+      "name": "Neptune",
+      "type": "Ice giant",
+      "massKilograms": 1.02409e+26,
+      "meanRadiusKilometres": 24622.0,
+      "meanDensityKilogramsPerCubicMetre": 1638.0,
+      "meanSurfaceGravityMetresPerSecondSquared": 11.27,
+      "meanDistanceFromSunMillionKilometres": 4515.0,
+      "orbitalPeriodDays": 59800.0,
+      "summary": "The eighth and most distant planet from the Sun."
+    }
+  ]
+}
