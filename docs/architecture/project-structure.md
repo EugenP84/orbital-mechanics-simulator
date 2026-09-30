@@ -37,8 +37,8 @@ The project is a five-module Gradle build:
 | Module                  | Responsibility                                                              |
 |-------------------------|----------------------------------------------------------------------------|
 | `simulator-core`        | Physics engine, numerical integrators, domain model, orbital analysis      |
-| `simulator-data`        | External NEO data acquisition, offline provenance-locked fixtures          |
-| `simulator-learning`    | Educational scenario layer (levels, sessions, completion policies, hints)  |
+| `simulator-data`        | External NEO data, offline fixtures, and trusted Solar-System planet data   |
+| `simulator-learning`    | Educational scenario layer (L0–L4, comparison logic, policies and hints)    |
 | `simulator-app`         | JavaFX presentation shell, controllers, rendering                          |
 | `simulator-evaluation`  | Headless evaluation experiments (integrator comparison, Apophis validation)|
 
@@ -76,257 +76,87 @@ Notes on the graph:
 
 ## Full Structure (as built)
 
-```
+The following tracked-file inventory was regenerated from `git ls-files`
+after completion of the Level 2 increment. It is intentionally exact rather
+than aspirational.
+
+```text
 orbital-mechanics-simulator/
+├── docs/                              # Project architecture, design decisions and evaluation evidence
+│   ├── architecture/                  # As-built architecture documentation
+│   ├── decisions/                     # Architecture Decision Records (ADR-001 … ADR-011)
+│   └── evaluation/                    # Reproducible experimental evidence and results
+│       ├── integrator-comparison/     # Numerical-integrator comparison evidence
+│       └── neo-validation/            # Apophis convergence and CNEOS validation evidence
 │
-├── .gitattributes
-├── .gitignore
-├── build.gradle.kts
-├── settings.gradle.kts
-├── gradlew
-├── gradlew.bat
-├── project-structure.txt                     ← exported IDE tree (source of this doc)
-├── README.md
+├── simulator-core/                    # Deterministic physics and simulation engine
+│   └── src/
+│       ├── main/java/.../core/
+│       │   ├── integrator/            # Euler, Velocity Verlet and RK4 integration strategies
+│       │   ├── math/                  # Vectors, state vectors and physical constants
+│       │   ├── model/                 # Celestial-body and simulation-body domain models
+│       │   ├── orbital/               # Orbital-state calculation and analysis
+│       │   ├── physics/               # Gravity, acceleration and energy calculations
+│       │   └── simulation/            # Simulation execution, snapshots and listeners
+│       └── test/java/.../core/        # Unit and integration tests for the core engine
+│           ├── integrator/            # Integrator correctness and convergence tests
+│           ├── math/                  # Mathematical primitive tests
+│           ├── model/                 # Domain-model validation tests
+│           ├── orbital/               # Orbital-analysis tests
+│           ├── physics/               # Gravity, acceleration and energy tests
+│           └── simulation/            # Simulation-engine and multi-body tests
 │
-├── gradle/wrapper/
-│   ├── gradle-wrapper.jar
-│   └── gradle-wrapper.properties
+├── simulator-data/                    # External scientific data and trusted reference datasets
+│   └── src/
+│       ├── main/
+│       │   ├── java/.../data/
+│       │   │   ├── horizons/          # JPL Horizons state-vector loading and provenance
+│       │   │   ├── http/              # HTTP transport abstraction and JDK implementation
+│       │   │   ├── nasa/              # NASA NeoWs API access and JSON parsing
+│       │   │   ├── neo/               # Provider-neutral NEO data model and contracts
+│       │   │   └── planet/            # Solar-System planet reference-data catalogue
+│       │   └── resources/
+│       │       ├── neo/               # Bundled Apophis/Horizons and NeoWs fixtures
+│       │       └── planets/           # NASA-derived Solar-System planet dataset
+│       └── test/
+│           ├── java/.../data/         # Data loading, parsing and provider tests
+│           └── resources/neo/         # Deterministic NEO test fixtures
 │
-├── docs/
-│   ├── architecture/
-│   │   └── project-structure.md               ← this document
-│   └── decisions/                             ← Architecture Decision Records (11)
-│       ├── ADR-001-technology-stack-and-structure.md
-│       ├── ADR-002-celestial-body-model.md
-│       ├── ADR-003-newtonian-gravity-model.md
-│       ├── ADR-004-acceleration-aggregation.md
-│       ├── ADR-005-integration-contract.md
-│       ├── ADR-006-simulation-engine-execution-model.md
-│       ├── ADR-007-external-neo-data-acquisition.md
-│       ├── ADR-008-learning-scenario-architecture.md
-│       ├── ADR-009-orbital-state-analysis.md
-│       ├── ADR-010-presentation-architecture-and-multi-level-shell.md
-│       └── ADR-011-level-4-real-neo-close-approach-experiment-and-validation.md
+├── simulator-learning/                # Educational scenarios and learning-domain logic
+│   └── src/
+│       ├── main/java/.../learning/
+│       │   └── scenario/              # L0–L4 scenarios, lifecycle, policies and hints
+│       └── test/java/.../learning/
+│           └── scenario/              # Scenario, policy and learning-logic tests
 │
-├── simulator-core/                            ← Physics engine + domain model
-│   ├── build.gradle.kts
-│   ├── src/main/java/io/github/eugenp84/orbitalsim/core/
-│   │   ├── integrator/                        ← numerical integration (Strategy)
-│   │   │   ├── EulerIntegrator.java
-│   │   │   ├── Integrator.java
-│   │   │   ├── IntegratorValidation.java
-│   │   │   ├── RungeKutta4Integrator.java
-│   │   │   └── VelocityVerletIntegrator.java
-│   │   ├── math/
-│   │   │   ├── PhysicalConstants.java
-│   │   │   ├── StateVector.java
-│   │   │   └── Vector3D.java
-│   │   ├── model/
-│   │   │   ├── CelestialBody.java
-│   │   │   ├── CelestialBodyType.java
-│   │   │   └── SimulationBody.java
-│   │   ├── orbital/                           ← osculating orbital-element analysis
-│   │   │   ├── OrbitalStateAnalysis.java
-│   │   │   └── OrbitalStateCalculator.java
-│   │   ├── physics/
-│   │   │   ├── AccelerationModel.java
-│   │   │   ├── EnergyCalculator.java
-│   │   │   ├── GravitationalBodyConfig.java
-│   │   │   ├── GravityCalculator.java
-│   │   │   └── NBodyAccelerationCalculator.java
-│   │   └── simulation/
-│   │       ├── AdvanceResult.java
-│   │       ├── BodySnapshot.java
-│   │       ├── ListenerErrorHandler.java
-│   │       ├── SimulationEngine.java
-│   │       ├── SimulationListener.java        ← Observer contract
-│   │       ├── SimulationSnapshot.java
-│   │       ├── StepResult.java                ← sealed: Advanced | NumericalBreakdown
-│   │       └── TwoBodyInitialState.java
-│   └── src/test/java/io/github/eugenp84/orbitalsim/core/
-│       ├── integrator/
-│       │   ├── EulerIntegratorTest.java
-│       │   ├── IntegratorComparisonTest.java
-│       │   ├── IntegratorConvergenceTest.java
-│       │   ├── RungeKutta4IntegratorTest.java
-│       │   └── VelocityVerletIntegratorTest.java
-│       ├── math/
-│       │   ├── StateVectorTest.java
-│       │   └── Vector3DTest.java
-│       ├── model/
-│       │   ├── CelestialBodyTest.java
-│       │   └── SimulationBodyTest.java
-│       ├── orbital/
-│       │   └── OrbitalStateCalculatorTest.java
-│       ├── physics/
-│       │   ├── EnergyCalculatorTest.java
-│       │   ├── GravityCalculatorTest.java
-│       │   └── NBodyAccelerationCalculatorTest.java
-│       └── simulation/
-│           ├── SimulationEngineTest.java
-│           ├── SimulationListenerTest.java
-│           └── TwoBodyInitialStateTest.java
+├── simulator-app/                     # JavaFX presentation and application composition
+│   └── src/
+│       ├── main/java/.../app/
+│       │   ├── composition/           # Bridges independent data and learning modules
+│       │   ├── controller/            # UI-facing scenario and simulation controllers
+│       │   └── rendering/             # Canvas rendering, transforms and trajectory traces
+│       └── test/java/.../app/
+│           ├── composition/           # Application-composition tests
+│           ├── controller/            # Controller behaviour tests
+│           └── rendering/             # Rendering-support and trajectory tests
 │
-├── simulator-data/                            ← External NEO data + offline fixtures
-│   ├── build.gradle.kts
-│   ├── src/main/java/io/github/eugenp84/orbitalsim/data/
-│   │   ├── horizons/                          ← JPL Horizons fixture (L4 initial state)
-│   │   │   ├── HorizonsDataFormatException.java
-│   │   │   ├── HorizonsEpochState.java
-│   │   │   ├── HorizonsExperimentData.java
-│   │   │   ├── HorizonsExperimentLoader.java
-│   │   │   └── HorizonsProvenance.java
-│   │   ├── http/
-│   │   │   ├── HttpResponseData.java
-│   │   │   ├── HttpTransport.java
-│   │   │   ├── HttpTransportException.java
-│   │   │   ├── HttpTransportInterruptedException.java
-│   │   │   └── JdkHttpTransport.java
-│   │   ├── nasa/                              ← NeoWs feed client + DTOs + parser
-│   │   │   ├── BundledNeoDataProvider.java
-│   │   │   ├── CloseApproachDto.java
-│   │   │   ├── EstimatedDiameterDto.java
-│   │   │   ├── FeedResponseDto.java
-│   │   │   ├── NasaNeoDataProvider.java
-│   │   │   ├── NasaNeoWsParser.java
-│   │   │   ├── NeoDataFormatException.java
-│   │   │   └── NeoDto.java
-│   │   └── neo/                               ← neutral NEO domain result types
-│   │       ├── CloseApproach.java
-│   │       ├── DataSource.java
-│   │       ├── NeoDataProvider.java
-│   │       ├── NeoDataResult.java
-│   │       ├── NeoDataUnavailableException.java
-│   │       └── NeoObjectData.java
-│   ├── src/main/resources/neo/
-│   │   ├── apophis-2029-horizons.json
-│   │   ├── neows-feed-2029-04-13.json
-│   │   └── neows-feed-2029-04-13.meta.json
-│   ├── src/test/java/io/github/eugenp84/orbitalsim/data/
-│   │   ├── horizons/
-│   │   │   └── HorizonsExperimentLoaderTest.java
-│   │   ├── http/
-│   │   │   └── FakeHttpTransport.java
-│   │   ├── nasa/
-│   │   │   ├── NasaNeoDataProviderTest.java
-│   │   │   └── NasaNeoLiveIntegrationTest.java
-│   │   └── neo/
-│   │       ├── BundledNeoDataProviderTest.java
-│   │       └── NeoDataContractsTest.java
-│   └── src/test/resources/neo/
-│       ├── neows-feed-2029-04-13.json
-│       ├── neows-feed-2029-04-13.meta.json
-│       ├── neows-feed-corrupt.json
-│       └── neows-feed-corrupt.meta.json
+├── simulator-evaluation/              # Headless scientific evaluation experiments
+│   └── src/
+│       ├── main/java/.../evaluation/
+│       │   └── integrator/            # Formal numerical-integrator comparison experiment
+│       └── test/
+│           ├── java/.../evaluation/
+│           │   ├── integrator/        # Integrator evidence generation and validation
+│           │   └── neo/               # Apophis convergence and CNEOS validation experiments
+│           └── resources/neo/         # Provenance-locked CNEOS reference fixture
 │
-├── simulator-learning/                        ← Educational scenario layer
-│   ├── build.gradle.kts
-│   ├── src/main/java/io/github/eugenp84/orbitalsim/learning/scenario/
-│   │   ├── Hint.java
-│   │   ├── HintCategory.java
-│   │   ├── HintSource.java
-│   │   ├── Level0Attempt.java
-│   │   ├── Level0PlanetCreationCompletionPolicy.java
-│   │   ├── Level0Scenario.java
-│   │   ├── Level1Attempt.java
-│   │   ├── Level1Criteria.java
-│   │   ├── Level1HintEngine.java
-│   │   ├── Level1Scenario.java
-│   │   ├── Level1StableOrbitCompletionPolicy.java
-│   │   ├── Level3Attempt.java
-│   │   ├── Level3CompletionPolicy.java
-│   │   ├── Level3ProgressSource.java
-│   │   ├── Level3Scenario.java
-│   │   ├── Level4Attempt.java
-│   │   ├── Level4CompletionPolicy.java
-│   │   ├── Level4InitialConditions.java
-│   │   ├── Level4ProgressSource.java
-│   │   ├── Level4Scenario.java
-│   │   ├── ScenarioAttemptNotAssessableException.java
-│   │   ├── ScenarioCompletionPolicy.java      ← Strategy contract for completion
-│   │   ├── ScenarioEvaluation.java
-│   │   ├── ScenarioLifecycleState.java
-│   │   ├── ScenarioObservation.java
-│   │   ├── ScenarioObservationCadence.java
-│   │   ├── ScenarioSession.java               ← sole engine-advancement boundary
-│   │   ├── ScenarioTerminationReason.java
-│   │   └── TimeHorizonCompletionPolicy.java
-│   └── src/test/java/io/github/eugenp84/orbitalsim/learning/scenario/
-│       ├── Level0ScenarioTest.java
-│       ├── Level1HintEngineTest.java
-│       ├── Level1ScenarioTest.java
-│       ├── Level1StableOrbitCompletionPolicyTest.java
-│       ├── Level3ScenarioTest.java
-│       ├── Level4ScenarioTest.java
-│       ├── ScenarioObservationCadenceTest.java
-│       ├── ScenarioSessionTest.java
-│       └── TimeHorizonCompletionPolicyTest.java
-│
-├── simulator-app/                             ← JavaFX presentation shell
-│   ├── build.gradle.kts
-│   ├── src/main/java/io/github/eugenp84/orbitalsim/app/
-│   │   ├── IntegratorComparisonScreen.java
-│   │   ├── Level0Screen.java
-│   │   ├── Level1Screen.java
-│   │   ├── Level3Screen.java
-│   │   ├── Level4Screen.java
-│   │   ├── LevelScreen.java                   ← shared level host/screen abstraction
-│   │   ├── Main.java                          ← entry point / multi-level shell
-│   │   ├── SimulationViewCore.java            ← shared presentation core (composition)
-│   │   ├── composition/
-│   │   │   └── Level4AttemptFactory.java      ← data↔learning boundary
-│   │   ├── controller/
-│   │   │   ├── AttemptCreationResult.java
-│   │   │   ├── IntegratorComparisonController.java
-│   │   │   ├── IntegratorComparisonState.java
-│   │   │   ├── Level0Controller.java
-│   │   │   ├── Level3Controller.java
-│   │   │   ├── Level4Controller.java
-│   │   │   ├── ScenarioControls.java          ← narrow control interface
-│   │   │   ├── ScenarioPlayer.java
-│   │   │   └── SimulationController.java      ← also drives Level 1
-│   │   └── rendering/
-│   │       ├── SimulationRenderer.java
-│   │       ├── TrajectoryTrace.java
-│   │       ├── TrajectoryTrail.java
-│   │       └── ViewTransform.java
-│   └── src/test/java/io/github/eugenp84/orbitalsim/app/
-│       ├── composition/
-│       │   └── Level4AttemptFactoryTest.java
-│       ├── controller/
-│       │   ├── IntegratorComparisonControllerTest.java
-│       │   ├── Level0ControllerTest.java
-│       │   ├── Level3ControllerTest.java
-│       │   ├── Level4ControllerTest.java
-│       │   ├── ScenarioPlayerTest.java
-│       │   └── SimulationControllerTest.java
-│       └── rendering/
-│           └── TrajectoryTrailTest.java
-│
-└── simulator-evaluation/                      ← Headless evaluation experiments
-    ├── build.gradle.kts
-    ├── src/main/java/io/github/eugenp84/orbitalsim/evaluation/integrator/
-    │   ├── IntegratorComparisonExperiment.java
-    │   ├── IntegratorComparisonResult.java
-    │   ├── IntegratorComparisonRun.java
-    │   └── IntegratorMethod.java
-    ├── src/test/java/io/github/eugenp84/orbitalsim/evaluation/
-    │   ├── integrator/
-    │   │   ├── IntegratorComparisonExperimentTest.java
-    │   │   └── IntegratorComparisonRunTest.java
-    │   └── neo/                               ← Apophis 2029 validation vs CNEOS
-    │       ├── ApophisConvergenceExperiment.java
-    │       ├── ApophisEncounterExperiment.java
-    │       ├── ApophisEncounterExperimentTest.java
-    │       ├── ApophisExternalValidationExperiment.java
-    │       ├── CneosCloseApproachReference.java
-    │       ├── CneosReferenceFixture.java
-    │       ├── CneosReferenceLoader.java
-    │       ├── CneosReferenceLoaderTest.java
-    │       ├── EncounterMeasurement.java
-    │       └── ExternalValidationMeasurement.java
-    └── src/test/resources/neo/
-        └── apophis-2029-cneos-reference.json
+├── gradle/
+│   └── wrapper/                       # Gradle Wrapper configuration and executable JAR
+├── build.gradle.kts                   # Root Gradle build configuration
+├── settings.gradle.kts                # Multi-module Gradle project definition
+├── gradlew                            # Unix Gradle Wrapper launcher
+├── gradlew.bat                        # Windows Gradle Wrapper launcher
+└── README.md                          # Project overview, build instructions and status
 ```
 
 ---
@@ -344,6 +174,7 @@ to keep this document an honest architectural record.
 | `core/simulation/SimulationListener` (+ `ListenerErrorHandler`) | Observer         | Decoupled engine → presentation/observation notification |
 | `app/SimulationViewCore`, `LevelScreen`, `*Screen`  | Composition over inheritance| Shared presentation core reused across levels (ADR-010) |
 | `app/composition/Level4AttemptFactory`              | Composition boundary        | Bridges data and learning modules without a direct edge between them |
+| `app/Main` + `Level0Screen` + `Level2Screen`        | Application composition     | Maintains the minimal in-memory L0→L2 learner-planet hand-off while keeping learning and data modules independent |
 
 ### Patterns considered but not adopted
 
@@ -357,35 +188,43 @@ to keep this document an honest architectural record.
 
 ## As-Built vs Planned Divergences
 
-The earlier baseline document described a planned structure. The delivered
-system diverges from it in the following deliberate, evidence-driven ways:
+The earlier baseline described a planned structure. The delivered system
+diverges from it in the following deliberate, evidence-driven ways:
 
 - **`simulator-evaluation` is built, not deferred.** It contains the
   headless integrator-comparison experiment and the Apophis 2029 external
-  validation suite (against a provenance-locked JPL CNEOS reference).
-- **Levels implemented are L0, L1, L3, L4 — there is no L2.** The scenario
-  package holds these four levels only.
-- **Data module is organised as `horizons/`, `http/`, `nasa/`, `neo/`** —
-  not the planned `nasa/dto` + `nasa/mapping` + `persistence/` + `library/`
-  layout. There is no persistence or planet-library package, and no
-  `resources/planets/` directory. The bundled resources are the NEO fixtures
-  under `resources/neo/`.
-- **No `core/event/` package.** The Observer contract lives directly in
-  `core/simulation/` as `SimulationListener`.
+  validation suite against a provenance-locked JPL CNEOS reference.
+- **All five learning scenarios L0–L4 are implemented.** L2 is intentionally
+  different from the simulation-based levels: it is an exploratory,
+  non-assessable planet-comparison activity rather than another numerical
+  simulation.
+- **L2 introduces a small `data/planet/` package and
+  `resources/planets/solar-system-planets.json`.** This is a bounded trusted
+  reference catalogue, not the larger general-purpose planet-library or
+  persistence subsystem envisaged in the early plan.
+- **L0→L2 continuity is in memory.** `Main` retains the current learner-planet
+  profile published by `Level0Screen` and supplies it when `Level2Screen` is
+  created. No general save/resume or persistence infrastructure is introduced.
+- **The data module remains organised around `horizons/`, `http/`, `nasa/`,
+  `neo/` and the new bounded `planet/` package.** There is no generic
+  persistence package.
+- **No `core/event/` package exists.** The Observer contract lives directly
+  in `core/simulation/` as `SimulationListener`.
 - **A `core/orbital/` package exists** (`OrbitalStateAnalysis`,
-  `OrbitalStateCalculator`) — osculating orbital-element analysis, added per
-  ADR-009. It was not in the original plan.
-- **The app layer uses `composition/`, `controller/`, `rendering/`** — there
-  is no `configuration/` package, and no FXML/CSS/image resources; the UI is
-  built programmatically. Screens and the shared `SimulationViewCore` sit at
-  the `app` package root.
+  `OrbitalStateCalculator`) for osculating orbital-state analysis, added per
+  ADR-009 although it was not in the original baseline.
+- **The app layer uses `composition/`, `controller/` and `rendering/`;** there
+  is no FXML/CSS resource architecture. Screens and the shared
+  `SimulationViewCore` sit at the `app` package root.
 - **Level 1 has no dedicated controller.** It is driven by the shared
-  `SimulationController`; L0, L3 and L4 have their own controllers.
-- **Eleven ADRs are present** (ADR-001 … ADR-011), including ADR-010
-  (presentation architecture and multi-level shell) and ADR-011 (Level 4
-  real-NEO close-approach experiment and validation).
-- **No `gradle.properties`, `docs/diagrams/` or `docs/evaluation/`** exist in
-  the current tree; the earlier baseline listed them speculatively.
+  `SimulationController`; L0, L3 and L4 have dedicated controllers, while L2
+  is sufficiently small to keep its deterministic comparison logic in the
+  learning layer and its interaction logic in `Level2Screen`.
+- **Eleven ADRs are currently tracked** (ADR-001 … ADR-011). The numerical
+  integrator comparison is implemented and evidenced, but there is no
+  tracked ADR-012 in the current repository.
+- **`docs/evaluation/` now exists** and contains the committed raw
+  integrator-comparison and NEO-validation evidence.
 
 ---
 
@@ -395,7 +234,7 @@ system diverges from it in the following deliberate, evidence-driven ways:
 - **Module prefix:** each module owns one sub-package
   (`core`, `data`, `learning`, `app`, `evaluation`)
 - **Tests mirror sources:** test packages replicate main package structure
-- **Resources:** JSON fixtures live in the owning module's resources, under
-  a `neo/` folder
+- **Resources:** JSON fixtures/reference data live in the owning module's
+  resources; NEO data use `neo/` and Level 2 reference planets use `planets/`
 - **Packages emerge from need:** packages and the `simulator-evaluation`
   module were created only when concrete classes required them

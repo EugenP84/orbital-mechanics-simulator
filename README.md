@@ -29,32 +29,33 @@ and acceleration-model evaluations.
 ## Modules
 
   ------------------------------------------------------------------------
-  Module                   Responsibility          Current status
+Module                   Responsibility          Current status
   ------------------------ ----------------------- -----------------------
-  `simulator-core`         Domain model, Newtonian Implemented and tested
-                           gravity, numerical      
-                           integrators,            
-                           orbital-state analysis  
-                           and simulation engine   
+`simulator-core`         Domain model, Newtonian Implemented and tested
+gravity, numerical      
+integrators,            
+orbital-state analysis  
+and simulation engine
 
-  `simulator-data`         NASA NeoWs integration, Implemented and tested
-                           provider-neutral NEO    
-                           data, offline support   
-                           and HTTP transport      
+`simulator-data`         NASA NeoWs integration, Implemented and tested
+provider-neutral NEO    
+data, offline support,  
+trusted planet reference
+data and HTTP transport
 
-  `simulator-learning`     Scenario lifecycle,     L0, L1, L3 and L4
-                           learning scenarios and  implemented; L2 remains
-                           adaptive feedback       to be implemented
+`simulator-learning`     Scenario lifecycle,     L0–L4 implemented and
+learning scenarios and  tested
+adaptive feedback
 
-  `simulator-evaluation`   Controlled              Implemented and tested
-                           numerical-integrator    
-                           comparison and          
-                           measurement             
+`simulator-evaluation`   Controlled              Implemented and tested
+numerical-integrator    
+comparison and          
+measurement
 
-  `simulator-app`          JavaFX application,     Implemented for the
-                           rendering, controls,    currently available
-                           navigation and          scenarios and
-                           comparison UI           comparison facility
+`simulator-app`          JavaFX application,     Implemented for the
+rendering, controls,    currently available
+navigation and          scenarios and
+comparison UI           comparison facility
   ------------------------------------------------------------------------
 
 The architecture keeps the deterministic computational core independent
@@ -83,10 +84,15 @@ validation.
 ### `simulator-data`
 
 NASA NeoWs integration is isolated from the deterministic core by a
-provider boundary. The module includes provider-neutral SI-unit data,
+provider boundary. The module includes provider-neutral SI-unit NEO data,
 NASA-specific parsing, live HTTP access, bundled offline data, explicit
 external-service failure handling, and an injectable HTTP transport seam
 for deterministic tests.
+
+The module also contains the bundled Solar-System planet catalogue used by
+Level 2. The catalogue is loaded from JSON and records NASA/NSSDCA source
+provenance; the application uses it as trusted reference data without
+introducing a dependency from `simulator-learning` to `simulator-data`.
 
 Ordinary development and automated testing therefore do not require live
 NASA access.
@@ -112,8 +118,17 @@ physics-informed rules provide adaptive guidance.
 
 #### Learning Scenario L2 --- Planet Comparison
 
-Not yet implemented. L2 remains part of the planned five-scenario
-learning sequence and is the remaining scenario implementation task.
+Implemented. L2 is an exploratory, non-assessable comparison activity.
+The learner's current Level 0 planet is compared with any of the eight
+Solar-System planets using mass, mean radius, mean density and surface
+gravity. Density and surface gravity for the learner-created planet are
+derived from its selected mass and radius; trusted reference-planet data
+are loaded from the bundled NASA/NSSDCA-derived JSON catalogue.
+
+L2 deliberately has no simulation lifecycle, numerical integrator,
+pass/fail criterion or adaptive hints. Level 0 to Level 2 continuity is
+kept as minimal in-memory application state rather than introducing a
+persistence subsystem.
 
 #### Learning Scenario L3 --- Gravitational Perturbation
 
@@ -145,12 +160,16 @@ presentation and headless execution for controlled evaluation.
 
 ### `simulator-app`
 
-The JavaFX application provides the presentation layer for the
-implemented learning scenarios and the numerical-integrator comparison.
-Its architecture includes the `Main` application host and persistent
+The JavaFX application provides the presentation layer for all five
+learning scenarios and the numerical-integrator comparison. Its
+architecture includes the `Main` application host and persistent
 navigation, the `LevelScreen` screen contract, shared rendering and
-trajectory visualisation, level-specific controls/controllers, and a
-dedicated comparison screen.
+trajectory visualisation for simulation-based levels, level-specific
+controls/controllers, the non-simulation `Level2Screen`, and a dedicated
+integrator-comparison screen.
+
+`Main` also owns the deliberately small in-memory hand-off of the current
+Level 0 learner-planet profile to Level 2.
 
 The five planned learning scenarios are conceptually separate from the
 numerical-integrator comparison; the comparison is not an L5 scenario.
@@ -193,44 +212,42 @@ operation.
 ## Design decisions
 
 Architecture and significant design choices are documented as
-Architecture Decision Records (ADRs) under `docs/decisions/`.
+Architecture Decision Records (ADRs) under `docs/decisions/`. Eleven ADRs
+(ADR-001 through ADR-011) are currently tracked in the repository.
 
   -----------------------------------------------------------------------
-  ADR                                 Decision area
+ADR                                 Decision area
   ----------------------------------- -----------------------------------
-  ADR-001                             Technology stack and multi-module
-                                      structure
+ADR-001                             Technology stack and multi-module
+structure
 
-  ADR-002                             Celestial-body definition/state
-                                      separation
+ADR-002                             Celestial-body definition/state
+separation
 
-  ADR-003                             Newtonian gravity model
+ADR-003                             Newtonian gravity model
 
-  ADR-004                             Acceleration aggregation and
-                                      restricted-body policy
+ADR-004                             Acceleration aggregation and
+restricted-body policy
 
-  ADR-005                             Snapshot-based numerical
-                                      integration
+ADR-005                             Snapshot-based numerical
+integration
 
-  ADR-006                             Simulation-engine execution model
+ADR-006                             Simulation-engine execution model
 
-  ADR-007                             External NEO data acquisition and
-                                      trust boundary
+ADR-007                             External NEO data acquisition and
+trust boundary
 
-  ADR-008                             Learning-scenario architecture and
-                                      evaluation cadence
+ADR-008                             Learning-scenario architecture and
+evaluation cadence
 
-  ADR-009                             Orbital-state analysis and element
-                                      semantics
+ADR-009                             Orbital-state analysis and element
+semantics
 
-  ADR-010                             JavaFX presentation architecture
-                                      and multi-level shell
+ADR-010                             JavaFX presentation architecture
+and multi-level shell
 
-  ADR-011                             L4 NEO simulation and validation
-                                      design
-
-  ADR-012                             Numerical-integrator runtime
-                                      exploration and formal comparison
+ADR-011                             L4 NEO simulation and validation
+design
   -----------------------------------------------------------------------
 
 ## Documentation
@@ -238,10 +255,12 @@ Architecture Decision Records (ADRs) under `docs/decisions/`.
 -   [Project structure and design
     decisions](docs/architecture/project-structure.md)
 -   [Architecture Decision Records](docs/decisions/)
+-   [Integrator-comparison evaluation evidence](docs/evaluation/integrator-comparison/)
+-   [NEO validation evidence](docs/evaluation/neo-validation/)
 
 ## Current status
 
-The project is in the development and evaluation stage.
+The project is in the verification and evaluation stage.
 
 Implemented and substantially validated:
 
@@ -249,7 +268,7 @@ Implemented and substantially validated:
 -   Forward Euler, Velocity Verlet and RK4 integrators;
 -   orbital-state analysis;
 -   NASA NeoWs data layer with offline support;
--   Learning Scenarios L0, L1, L3 and L4;
+-   Learning Scenarios L0–L4, including L2 planet comparison;
 -   physics-informed adaptive feedback where required by the scenario
     design;
 -   JavaFX multi-scenario application;
@@ -257,9 +276,4 @@ Implemented and substantially validated:
 
 Remaining significant work:
 
--   implementation and integration of Learning Scenario L2;
--   final verification and limited UI polishing.
-
-The current priority is to avoid unnecessary feature expansion and
-concentrate on the remaining planned scope, formal evaluation and
-project reporting.
+-   final JavaDocs refinement and limited UI polishing;
