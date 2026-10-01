@@ -201,40 +201,7 @@ operation.
 Architecture and significant design choices are documented as
 Architecture Decision Records (ADRs) under `docs/decisions/`. Eleven ADRs
 (ADR-001 through ADR-011) are currently tracked in the repository.
-
-  -----------------------------------------------------------------------
-ADR                                 Decision area
-  ----------------------------------- -----------------------------------
-ADR-001                             Technology stack and multi-module
-structure
-
-ADR-002                             Celestial-body definition/state
-separation
-
-ADR-003                             Newtonian gravity model
-
-ADR-004                             Acceleration aggregation and
-restricted-body policy
-
-ADR-005                             Snapshot-based numerical
-integration
-
-ADR-006                             Simulation-engine execution model
-
-ADR-007                             External NEO data acquisition and
-trust boundary
-
-ADR-008                             Learning-scenario architecture and
-evaluation cadence
-
-ADR-009                             Orbital-state analysis and element
-semantics
-
-ADR-010                             JavaFX presentation architecture
-and multi-level shell
-
-ADR-011                             L4 NEO simulation and validation
-design
+  
   -----------------------------------------------------------------------
 
 ## Documentation
