@@ -3,9 +3,8 @@ package io.github.eugenp84.orbitalsim.core.model;
 /**
  * Immutable identity and physical properties of a celestial body.
  * <p>
- * A celestial body definition carries no simulation state; its
- * time-dependent position and velocity are held by a
- * {@link SimulationBody} (see ADR-002, definition–state separation).
+ * A celestial body definition carries no simulation state;
+ * its time-dependent position and velocity are held by a {@link SimulationBody} (see ADR-002, definition–state separation).
  * All quantities are in canonical SI units.
  *
  * @param id     unique identifier, never null or blank
@@ -16,15 +15,10 @@ package io.github.eugenp84.orbitalsim.core.model;
  *
  * @author Eugeniu PLATITA
  */
-public record CelestialBody(
-        String id,
-        String name,
-        CelestialBodyType type,
-        double mass,
-        double radius
-) {
-
-    public CelestialBody {
+public record CelestialBody(String id, String name, CelestialBodyType type, double mass, double radius)
+{
+    public CelestialBody
+    {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("Body id must not be null or blank");
         }
@@ -40,5 +34,5 @@ public record CelestialBody(
         if (radius <= 0.0 || !Double.isFinite(radius)) {
             throw new IllegalArgumentException("Radius must be positive and finite, was: " + radius);
         }
-    }
+    }// end of CelestialBody() ----------------------------------
 }
