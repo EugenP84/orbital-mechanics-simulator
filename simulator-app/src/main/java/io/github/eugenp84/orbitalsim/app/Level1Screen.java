@@ -5,6 +5,10 @@ import io.github.eugenp84.orbitalsim.app.controller.SimulationController;
 import io.github.eugenp84.orbitalsim.app.rendering.TrajectoryTrail;
 import io.github.eugenp84.orbitalsim.app.rendering.ViewTransform;
 import io.github.eugenp84.orbitalsim.core.math.Vector3D;
+import io.github.eugenp84.orbitalsim.core.math.PhysicalConstants;
+import io.github.eugenp84.orbitalsim.core.orbital.OrbitalStateAnalysis;
+import io.github.eugenp84.orbitalsim.core.orbital.OrbitalStateCalculator;
+import io.github.eugenp84.orbitalsim.core.simulation.BodySnapshot;
 import io.github.eugenp84.orbitalsim.core.model.CelestialBodyType;
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
 import io.github.eugenp84.orbitalsim.learning.scenario.Hint;
@@ -20,6 +24,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
@@ -80,6 +85,11 @@ public final class Level1Screen implements LevelScreen
     private Slider orbitalSpeedSlider;
     private Label orbitalSpeedValueLabel;
     private Label hintLabel;
+    private Label eccentricityLabel;
+    private Label semiMajorAxisLabel;
+    private Label periapsisLabel;
+    private Label apoapsisLabel;
+    private Label currentDistanceLabel;
 
     /** Builds the Level 1 screen: its controller, view core, and the simulation and controls regions. */
     public Level1Screen()
@@ -108,7 +118,11 @@ public final class Level1Screen implements LevelScreen
                 Level1Screen::planetPositionOf,
                 INTEGRATOR_VALUE);
 
-        this.simulationRegion = new StackPane(canvas);
+        final VBox orbitalOverlay = buildOrbitalOverlay();
+        final StackPane simulationPane = new StackPane(canvas, orbitalOverlay);
+        StackPane.setAlignment(orbitalOverlay, Pos.TOP_LEFT);
+        StackPane.setMargin(orbitalOverlay, new Insets(18.0));
+        this.simulationRegion = simulationPane;
         this.controlsRegion = buildControlsPanel();
     }
 
@@ -269,6 +283,114 @@ public final class Level1Screen implements LevelScreen
         final ScenarioLifecycleState current = controller.state();
         orbitalSpeedSlider.setDisable(!orbitalSpeedSelectable(current));
         hintLabel.setText(hintTextFor(current, controller.latestHint()));
+        refreshOrbitalOverlay();
+    }
+
+    /** Creates a passive overlay; it does not intercept canvas mouse input. */
+    private VBox buildOrbitalOverlay()
+    {
+        eccentricityLabel = orbitalReadout();
+        semiMajorAxisLabel = orbitalReadout();
+        periapsisLabel = orbitalReadout();
+        apoapsisLabel = orbitalReadout();
+        currentDistanceLabel = orbitalReadout();
+
+        final Label title = new Label("ORBITAL PARAMETERS");
+        title.setStyle("-fx-text-fill: #aebfd7; -fx-font-weight: bold;");
+
+        final VBox overlay = new VBox(7.0, title, new Separator(),
+                eccentricityLabel, semiMajorAxisLabel, periapsisLabel,
+                apoapsisLabel, currentDistanceLabel);
+        overlay.setPadding(new Insets(14.0));
+        overlay.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        overlay.setPrefWidth(245.0);
+        overlay.setMouseTransparent(true);
+        overlay.setStyle("-fx-background-color: rgba(25, 37, 54, 0.84); "
+                + "-fx-background-radius: 8; -fx-border-radius: 8; "
+                + "-fx-border-color: rgba(145, 170, 205, 0.35);");
+        return overlay;
+    }
+
+    private static Label orbitalReadout()
+    {
+        final Label label = new Label("—");
+        label.setStyle("-fx-text-fill: #f0f4fb; -fx-font-size: 12px;");
+        return label;
+    }
+
+    /** Reads only the committed state; no engine or scenario state is mutated. */
+    private void refreshOrbitalOverlay()
+    {
+        final SimulationSnapshot snapshot = controller.snapshot();
+        final Optional<BodySnapshot> star = snapshot.bodies().stream()
+                .filter(body -> body.definition().type() == CelestialBodyType.STAR)
+                .findFirst();
+        final Optional<BodySnapshot> planet = snapshot.bodies().stream()
+                .filter(body -> body.definition().type() == CelestialBodyType.PLANET)
+                .findFirst();
+
+        if (star.isEmpty() || planet.isEmpty())
+        {
+            showUnavailableOrbit();
+            return;
+        }
+
+        final BodySnapshot primary = star.orElseThrow();
+        final BodySnapshot secondary = planet.orElseThrow();
+        final Vector3D relativePosition = secondary.state().position()
+                .subtract(primary.state().position());
+        final Vector3D relativeVelocity = secondary.state().velocity()
+                .subtract(primary.state().velocity());
+        final double mu = PhysicalConstants.GRAVITATIONAL_CONSTANT
+                * (primary.definition().mass() + secondary.definition().mass());
+
+        try
+        {
+            final OrbitalStateAnalysis orbit = OrbitalStateCalculator.analyse(
+                    relativePosition, relativeVelocity, mu);
+            final double eccentricity = orbit.eccentricity();
+            eccentricityLabel.setText(String.format(
+                    Locale.ROOT, "Eccentricity (e): %.4f", eccentricity));
+            currentDistanceLabel.setText("Current distance: "
+                    + formatAu(relativePosition.magnitude()));
+
+            // Bound, non-radial Keplerian osculating ellipse only.
+            if (orbit.specificOrbitalEnergy() < 0.0
+                    && !orbit.isRadial() && orbit.semiMajorAxis().isPresent())
+            {
+                final double a = orbit.semiMajorAxis().getAsDouble();
+                semiMajorAxisLabel.setText("Semi-major axis: " + formatAu(a));
+                periapsisLabel.setText("Periapsis: " + formatAu(a * (1.0 - eccentricity)));
+                apoapsisLabel.setText("Apoapsis: " + formatAu(a * (1.0 + eccentricity)));
+            }
+            else
+            {
+                semiMajorAxisLabel.setText("Semi-major axis: N/A (bound orbit)");
+                periapsisLabel.setText("Periapsis: N/A (bound orbit)");
+                apoapsisLabel.setText("Apoapsis: N/A (bound orbit)");
+            }
+        }
+        catch (IllegalArgumentException invalidState)
+        {
+            showUnavailableOrbit();
+        }
+    }
+
+    private static String formatAu(final double metres)
+    {
+        return Double.isFinite(metres) && metres >= 0.0
+                ? String.format(Locale.ROOT, "%.4f AU",
+                metres / PhysicalConstants.ASTRONOMICAL_UNIT)
+                : "N/A";
+    }
+
+    private void showUnavailableOrbit()
+    {
+        eccentricityLabel.setText("Eccentricity: N/A");
+        semiMajorAxisLabel.setText("Semi-major axis: N/A");
+        periapsisLabel.setText("Periapsis: N/A");
+        apoapsisLabel.setText("Apoapsis: N/A");
+        currentDistanceLabel.setText("Current distance: N/A");
     }
 
     private static Label sectionHeading(final String text)
