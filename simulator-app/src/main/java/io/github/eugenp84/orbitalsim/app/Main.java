@@ -33,7 +33,6 @@ public final class Main extends Application
 
     private final BorderPane host = new BorderPane();
     private final VBox sidePanel = new VBox(SIDE_PANEL_SPACING_PIXELS);
-
     private Stage stage;
     private LevelScreen currentScreen;
     private ToggleButton currentLevelButton;

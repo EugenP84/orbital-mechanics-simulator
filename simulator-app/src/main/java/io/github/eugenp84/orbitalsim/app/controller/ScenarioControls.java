@@ -3,7 +3,6 @@ package io.github.eugenp84.orbitalsim.app.controller;
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
-
 import java.util.Optional;
 import java.util.OptionalDouble;
 
@@ -11,8 +10,8 @@ import java.util.OptionalDouble;
  * The level-agnostic surface through which the user interface drives any scenario: the lifecycle,
  * presentation-speed, snapshot and reset operations shared by every level.
  * <p>
- * This is the view-facing counterpart to {@link ScenarioPlayer}: where {@code ScenarioPlayer} is the shared implementation of lifecycle/presentation behaviour, this interface is the shared surface a
- * generic screen depends on, so one animation loop and one set of common controls can drive both the Level 0 and Level 1 controllers without knowing which level is running.
+ * This is the view-facing counterpart to {@link ScenarioPlayer}: where {@code ScenarioPlayer} is the shared implementation of lifecycle/presentation behaviour,
+ * this interface is the shared surface a generic screen depends on, so one animation loop and one set of common controls can drive both the Level 0 and Level 1 controllers without knowing which level is running.
  * Level-specific configuration and pedagogy — orbital speed, hints, planet parameters — are deliberately absent here and remain on each concrete controller.
  *
  * @author Eugeniu PLATITA
@@ -20,12 +19,10 @@ import java.util.OptionalDouble;
 public interface ScenarioControls
 {
     /**
-     * Advances by the simulated time corresponding to the given wall-clock interval, but only while
-     * running.
+     * Advances by the simulated time corresponding to the given wall-clock interval, but only while running.
      *
      * @param wallClockSeconds elapsed real time for this frame; non-negative and finite
-     * @throws IllegalArgumentException if the argument is negative or non-finite, or if it and the
-     *         presentation speed produce a non-finite duration
+     * @throws IllegalArgumentException if the argument is negative or non-finite, or if it and the presentation speed produce a non-finite duration
      */
     void advanceByWallClock(double wallClockSeconds);
 

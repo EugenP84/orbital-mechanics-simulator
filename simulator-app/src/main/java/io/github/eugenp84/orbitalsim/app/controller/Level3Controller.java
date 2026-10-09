@@ -15,18 +15,15 @@ import java.util.OptionalDouble;
  * Coordinates a running Level 3 (Gravitational Perturbation) scenario on behalf of the user interface.
  * <p>
  * Lifecycle and presentation behaviour shared by every level is delegated to a {@link ScenarioPlayer}.
- * This controller adds only Level 3's configuration surface — building an attempt from the learner's
- * chosen perturber mass and initial stellar distance, exposing those values and the envelope bounds —
- * and a read-through to the running perturbation measurement (maximum target eccentricity). Level 3
- * has no hints and no assessability refusal: an out-of-envelope configuration is a construction error
- * the interface is expected to prevent, so {@link #configureAttempt} has no result value and lets such
- * an error propagate.
+ * This controller adds only Level 3's configuration surface — building an attempt from the learner's chosen perturber mass and initial stellar distance, exposing those values and the envelope bounds —
+ * and a read-through to the running perturbation measurement (maximum target eccentricity).
+ * Level 3 has no hints and no assessability refusal: an out-of-envelope configuration is a construction error the interface is expected to prevent,
+ * so {@link #configureAttempt} has no result value and lets such an error propagate.
  * <p>
- * On construction a moderate default attempt from within the calibrated envelope is installed
- * immediately, so the view always has a committed state to render. The default (1.5 Jupiter masses at
- * 1.65 AU) is a deliberate application choice of a visible-but-modest starting experiment, not a value
- * inferred from calibration. Reset and reconfiguration build a new attempt rather than rewinding, so
- * the accumulated maximum eccentricity returns to the new attempt's seeded initial value.
+ * On construction a moderate default attempt from within the calibrated envelope is installed immediately,
+ * so the view always has a committed state to render.
+ * The default (1.5 Jupiter masses at 1.65 AU) is a deliberate application choice of a visible-but-modest starting experiment, not a value inferred from calibration.
+ * Reset and reconfiguration build a new attempt rather than rewinding, so the accumulated maximum eccentricity returns to the new attempt's seeded initial value.
  *
  * @author Eugeniu PLATITA
  */
@@ -39,7 +36,6 @@ public final class Level3Controller implements ScenarioControls
 
     private final Level3Scenario scenario;
     private final ScenarioPlayer player;
-
     private Level3Attempt attempt;
     private double configuredPerturberMassKilograms;
     private double configuredPerturberDistanceMetres;
@@ -59,41 +55,34 @@ public final class Level3Controller implements ScenarioControls
     }
 
     /**
-     * Advances by the simulated time corresponding to the given wall-clock interval, but only while
-     * running.
+     * Advances by the simulated time corresponding to the given wall-clock interval, but only while running.
      *
      * @param wallClockSeconds elapsed real time for this frame; non-negative and finite
-     * @throws IllegalArgumentException if the argument is negative or non-finite, or if it and the
-     *         presentation speed produce a non-finite duration
+     * @throws IllegalArgumentException if the argument is negative or non-finite, or if it and the presentation speed produce a non-finite duration
      */
     @Override
-    public void advanceByWallClock(final double wallClockSeconds)
-    {
+    public void advanceByWallClock(final double wallClockSeconds) {
         player.advanceByWallClock(wallClockSeconds);
     }
 
     /** Whether a run/pause/resume control should be offered; false only when terminated. */
     @Override
-    public boolean canToggleRun()
-    {
+    public boolean canToggleRun() {
         return player.canToggleRun();
     }
 
     /**
      * Builds and installs a fresh, not-yet-started attempt from the given perturber configuration.
      * <p>
-     * Construction occurs before any controller state is modified, so an out-of-envelope configuration
-     * throws and leaves the previous attempt unchanged.
+     * Construction occurs before any controller state is modified, so an out-of-envelope configuration throws and leaves the previous attempt unchanged.
      *
      * @param perturberMassKilograms  the perturbing planet's mass; within the supported envelope
      * @param perturberDistanceMetres the perturber's initial stellar distance; within the envelope
      * @throws IllegalArgumentException if either argument is outside the supported learner envelope
      */
-    public void configureAttempt(
-            final double perturberMassKilograms, final double perturberDistanceMetres)
+    public void configureAttempt(final double perturberMassKilograms, final double perturberDistanceMetres)
     {
-        final Level3Attempt replacement =
-                scenario.createAttempt(perturberMassKilograms, perturberDistanceMetres);
+        final Level3Attempt replacement = scenario.createAttempt(perturberMassKilograms, perturberDistanceMetres);
         player.install(replacement.session());
         this.attempt = replacement;
         this.configuredPerturberMassKilograms = perturberMassKilograms;
@@ -107,8 +96,7 @@ public final class Level3Controller implements ScenarioControls
     }
 
     /** The currently configured perturber mass, in kilograms. */
-    public double configuredPerturberMassKilograms()
-    {
+    public double configuredPerturberMassKilograms() {
         return configuredPerturberMassKilograms;
     }
 
@@ -128,8 +116,7 @@ public final class Level3Controller implements ScenarioControls
     }
 
     /** The greatest supported perturber mass, in kilograms. */
-    public double maxPerturberMassKilograms()
-    {
+    public double maxPerturberMassKilograms() {
         return scenario.maxPerturberMassKilograms();
     }
 
@@ -137,8 +124,7 @@ public final class Level3Controller implements ScenarioControls
      * The greatest osculating target eccentricity observed so far — the running perturbation measure.
      * A finite-horizon result, not a stability claim.
      */
-    public double maxEccentricity()
-    {
+    public double maxEccentricity() {
         return attempt.progressSource().maxEccentricity();
     }
 

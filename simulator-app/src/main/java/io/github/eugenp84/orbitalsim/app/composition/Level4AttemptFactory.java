@@ -56,8 +56,7 @@ public final class Level4AttemptFactory
      *
      * @return fresh, not-yet-started Level 4 attempt
      */
-    public Level4Attempt createAttempt()
-    {
+    public Level4Attempt createAttempt() {
         return scenario.createAttempt(initialConditions);
     }
 

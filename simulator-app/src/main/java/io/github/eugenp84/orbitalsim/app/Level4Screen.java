@@ -30,7 +30,6 @@ import java.util.Optional;
 public final class Level4Screen implements LevelScreen
 {
     private static final String INTEGRATOR_VALUE = "Velocity Verlet";
-
     private static final double CANVAS_HEIGHT_PIXELS = 700.0;
     private static final double CANVAS_WIDTH_PIXELS = 900.0;
     private static final double KILOMETRES_PER_METRE = 0.001;
@@ -39,15 +38,14 @@ public final class Level4Screen implements LevelScreen
     private static final double MAX_TIME_RATE_SECONDS_PER_SECOND = 86_400.0;
     private static final double DEFAULT_TIME_RATE_SECONDS_PER_SECOND = 21_600.0;
     private static final double VIEW_RADIUS_METRES = 600_000_000.0;
-
     private static final double CONTROL_BAR_SPACING_PIXELS = 10.0;
     private static final double CONTROL_PANEL_PADDING_PIXELS = 10.0;
     private static final double CONTROL_ROW_SPACING_PIXELS = 6.0;
 
-    // Trails are deliberately disabled for this first L4 view. Existing trails store absolute
-    // heliocentric history; drawing that history through a camera that follows the current Earth
-    // position would not represent an Earth-relative encounter path. A relative-trail representation
-    // should be introduced separately if the learning value justifies it.
+    // Trails are deliberately disabled for this first L4 view.
+    // Existing trails store absolute heliocentric history.
+    // Drawing that history through a camera that follows the current Earth position would not represent an Earth-relative encounter path.
+    // A relative-trail representation should be introduced separately if the learning value justifies it.
     private static final int TRAIL_MAXIMUM_POINTS = 1;
     private static final double TRAIL_MINIMUM_SEGMENT_METRES = 1.0;
     private final Level4Controller controller;
@@ -65,9 +63,7 @@ public final class Level4Screen implements LevelScreen
         this.controller = new Level4Controller(new Level4AttemptFactory());
         final Canvas canvas = new Canvas(CANVAS_WIDTH_PIXELS, CANVAS_HEIGHT_PIXELS);
         final ViewTransform initialTransform = earthCentredTransform(controller.snapshot());
-        final TrajectoryTrail unusedTrail = new TrajectoryTrail(
-                TRAIL_MAXIMUM_POINTS,
-                TRAIL_MINIMUM_SEGMENT_METRES);
+        final TrajectoryTrail unusedTrail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, TRAIL_MINIMUM_SEGMENT_METRES);
 
         this.core = new SimulationViewCore(
                 controller,
@@ -79,10 +75,7 @@ public final class Level4Screen implements LevelScreen
                 snapshot -> Optional.empty(),
                 INTEGRATOR_VALUE);
         core.setTransformProvider(this::earthCentredTransform);
-        core.configureTimeRate(
-                MIN_TIME_RATE_SECONDS_PER_SECOND,
-                MAX_TIME_RATE_SECONDS_PER_SECOND,
-                DEFAULT_TIME_RATE_SECONDS_PER_SECOND);
+        core.configureTimeRate(MIN_TIME_RATE_SECONDS_PER_SECOND, MAX_TIME_RATE_SECONDS_PER_SECOND, DEFAULT_TIME_RATE_SECONDS_PER_SECOND);
 
         this.simulationRegion = new StackPane(canvas);
         this.controlsRegion = buildControlPanel();
@@ -133,21 +126,18 @@ public final class Level4Screen implements LevelScreen
     }
 
     @Override
-    public Parent controlsView()
-    {
+    public Parent controlsView() {
         return controlsRegion;
     }
 
     @Override
-    public void deactivate()
-    {
+    public void deactivate() {
         core.stopLoop();
     }
 
     private ViewTransform earthCentredTransform(final SimulationSnapshot snapshot)
     {
-        final Vector3D earthPosition = bodyPosition(snapshot, controller.earthId())
-                .orElseThrow(() -> new IllegalStateException("snapshot missing Earth body"));
+        final Vector3D earthPosition = bodyPosition(snapshot, controller.earthId()).orElseThrow(() -> new IllegalStateException("snapshot missing Earth body"));
 
         return ViewTransform.fitting(
                 CANVAS_WIDTH_PIXELS,
@@ -162,13 +152,11 @@ public final class Level4Screen implements LevelScreen
         return String.format(Locale.ROOT, "%,.0f km", metres * KILOMETRES_PER_METRE);
     }
 
-    private static String formatElapsedDays(final double seconds)
-    {
+    private static String formatElapsedDays(final double seconds) {
         return String.format(Locale.ROOT, "%.3f days", seconds / SECONDS_PER_DAY);
     }
 
-    private static String formatSpeedKilometresPerSecond(final double metresPerSecond)
-    {
+    private static String formatSpeedKilometresPerSecond(final double metresPerSecond) {
         return String.format(Locale.ROOT,"%.3f km/s", metresPerSecond * KILOMETRES_PER_METRE);
     }
 

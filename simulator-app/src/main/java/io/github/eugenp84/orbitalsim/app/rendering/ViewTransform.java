@@ -7,12 +7,10 @@ package io.github.eugenp84.orbitalsim.app.rendering;
  * a JavaFX {@code Canvas} addresses pixels from the top-left with the y-axis pointing down.
  * This transform is the single place that reconciles the two:
  * it applies a uniform scale, recentres the world on the viewport, and flips the y-axis.
- * Confining every unit conversion here lets the renderer work only in pixels and the engine only in metres, so neither depends on the
- * other's coordinate system.
+ * Confining every unit conversion here lets the renderer work only in pixels and the engine only in metres, so neither depends on the other's coordinate system.
  * <p>
  * The mapping is linear and uniform — one scale for both axes — which is correct while the view shows a single orbit at one characteristic scale, such as the
- * Sun-Earth prototype. The non-linear distance compression the NEO module will require, where bodies separated by very different distances must all stay
- * visible, is a deliberately separate concern and is not introduced here.
+ * Sun-Earth prototype. The non-linear distance compression the NEO module will require, where bodies separated by very different distances must all stay visible, is a  separate concern and is not introduced here.
  * <p>
  * Instances are immutable value objects: a pan or zoom yields a new transform rather than mutating an existing one,
  * so a renderer may hold a reference for the span of a frame without it changing underneath it.
@@ -73,14 +71,12 @@ public record ViewTransform(
 
         final double halfMinExtent = Math.min(canvasWidth, canvasHeight) / 2.0;
         final double pixelsPerMetre = VIEWPORT_FILL_FRACTION * halfMinExtent / worldRadiusToShow;
-        return new ViewTransform(
-                canvasWidth, canvasHeight, worldCentreX, worldCentreY, pixelsPerMetre);
+        return new ViewTransform(canvasWidth, canvasHeight, worldCentreX, worldCentreY, pixelsPerMetre);
     }
 
     /**
      * Converts a length in metres to pixels under this scale.
-     * Applies to any quantity measured in world units — a true-to-scale body radius,
-     * say — as distinct from a position, which also needs recentring and the y-flip.
+     * Applies to any quantity measured in world units — a true-to-scale body radius, as distinct from a position, which also needs recentring and the y-flip.
      *
      * @param worldLength a length in metres
      * @return the corresponding length in pixels

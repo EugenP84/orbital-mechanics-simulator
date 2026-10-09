@@ -8,7 +8,6 @@ import io.github.eugenp84.orbitalsim.learning.scenario.Level1Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioAttemptNotAssessableException;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
-
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -29,7 +28,6 @@ public final class SimulationController implements ScenarioControls
 {
     private final Level1Scenario scenario;
     private final ScenarioPlayer player;
-
     private double configuredSpeedMetresPerSecond;
     private HintSource hints;
 

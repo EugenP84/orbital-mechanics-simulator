@@ -4,7 +4,6 @@ import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioSession;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
-
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -21,7 +20,8 @@ import java.util.OptionalDouble;
  * <p>
  * Presentation speed is a wall-clock-to-simulated multiplier and never changes the engine's fixed numerical timestep (ADR-005 p8).
  * <p>
- * A level controller {@link #install(ScenarioSession) installs} a freshly built session whenever it configures or resets an attempt. Installation replaces the current session wholesale.
+ * A level controller {@link #install(ScenarioSession) installs} a freshly built session whenever it configures or resets an attempt.
+ * Installation replaces the current session wholesale.
  * the player carries no lifecycle or elapsed-time state of its own across an install (all such state lives in  the session),
  * while the presentation-speed multiplier — a view setting, not attempt state — is deliberately retained so a reset does not reset the learner's chosen playback speed.
  *
@@ -31,8 +31,6 @@ public final class ScenarioPlayer
 {
     private static final double SECONDS_PER_DAY = 86_400.0;
     private static final double DEFAULT_SIMULATED_SECONDS_PER_REAL_SECOND = 14.0 * SECONDS_PER_DAY;
-
-
     private ScenarioSession session;
     private double simulatedSecondsPerRealSecond = DEFAULT_SIMULATED_SECONDS_PER_REAL_SECOND;
 
@@ -41,18 +39,16 @@ public final class ScenarioPlayer
      *
      * @param session the session to drive; never null
      */
-    public ScenarioPlayer(final ScenarioSession session)
-    {
+    public ScenarioPlayer(final ScenarioSession session) {
         this.session = Objects.requireNonNull(session, "session must not be null");
     }
 
     /**
-     * Advances by the simulated time corresponding to the given wall-clock interval, but only while running. T
-     * he argument is validated independently of lifecycle state, and the derived duration is checked before it reaches the learning layer.
+     * Advances by the simulated time corresponding to the given wall-clock interval, but only while running.
+     * The argument is validated independently of lifecycle state, and the derived duration is checked before it reaches the learning layer.
      *
      * @param wallClockSeconds elapsed real time for this frame; non-negative and finite
-     * @throws IllegalArgumentException if the argument is negative or non-finite, or if it and the
-     *         presentation speed produce a non-finite duration
+     * @throws IllegalArgumentException if the argument is negative or non-finite, or if it and the presentation speed produce a non-finite duration
      */
     public void advanceByWallClock(final double wallClockSeconds)
     {
@@ -67,8 +63,7 @@ public final class ScenarioPlayer
         final double simulatedSeconds = wallClockSeconds * simulatedSecondsPerRealSecond;
         if (!Double.isFinite(simulatedSeconds))
         {
-            throw new IllegalArgumentException("wall-clock interval and presentation speed produce a non-finite duration: "
-                            + wallClockSeconds + " * " + simulatedSecondsPerRealSecond);
+            throw new IllegalArgumentException("wall-clock interval and presentation speed produce a non-finite duration: " + wallClockSeconds + " * " + simulatedSecondsPerRealSecond);
         }
         session.advanceBy(simulatedSeconds);
     }
@@ -114,21 +109,20 @@ public final class ScenarioPlayer
     {
         if (!Double.isFinite(value) || value <= 0.0)
         {
-            throw new IllegalArgumentException(
-                    "simulated-seconds-per-real-second must be positive and finite, was: " + value);
+            throw new IllegalArgumentException("simulated-seconds-per-real-second must be positive and finite, was: " + value);
         }
         this.simulatedSecondsPerRealSecond = value;
     }
 
-    /** Whether a run/pause/resume control should be offered; false only when terminated. */
+    /** Whether a run/pause/resume control should be offered; false only when terminated.  */
     public boolean canToggleRun()
     {
         return !isTerminated();
     }
 
     /**
-     * Simulated seconds elapsed since the current attempt started, or empty while not started — a
-     * real state (no baseline exists yet), not an error or a zero.
+     * Simulated seconds elapsed since the current attempt started, or empty while not started —
+     * a real state (no baseline exists yet), not an error or a zero.
      */
     public OptionalDouble elapsedSimulatedSeconds()
     {
@@ -146,14 +140,12 @@ public final class ScenarioPlayer
     }
 
     /** The latest committed simulation state, for rendering. */
-    public SimulationSnapshot snapshot()
-    {
+    public SimulationSnapshot snapshot() {
         return session.snapshot();
     }
 
     /** The current scenario lifecycle state. */
-    public ScenarioLifecycleState state()
-    {
+    public ScenarioLifecycleState state() {
         return session.state();
     }
 

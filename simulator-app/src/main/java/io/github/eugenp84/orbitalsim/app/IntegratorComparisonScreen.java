@@ -32,16 +32,13 @@ import java.util.Optional;
 
 /**
  * Interactive JavaFX screen for controlled comparison of Forward Euler,
- * Velocity Verlet and classical RK4 on the canonical circular two-body
- * experiment.
+ * Velocity Verlet and classical RK4 on the canonical circular two-body experiment.
  * <p>
- * Only one numerical method is executed and rendered at a time. Completed
- * results are retained by the controller and displayed together so the learner
- * can compare energy conservation, analytical trajectory error and
- * acceleration-model evaluation count.
+ * Only one numerical method is executed and rendered at a time.
+ * Completed results are retained by the controller and displayed together so the user can compare energy conservation,
+ * analytical trajectory error and acceleration-model evaluation count.
  * <p>
- * Presentation speed affects only how quickly fixed six-hour numerical steps
- * are requested. It never changes the experiment's integration timestep.
+ * Presentation speed affects only how quickly fixed six-hour numerical steps are requested. It never changes the experiment's integration timestep.
  *
  * @author Eugeniu PLATITA
  */
@@ -51,19 +48,15 @@ public final class IntegratorComparisonScreen implements LevelScreen
     private static final double MAX_FRAME_DELTA_SECONDS = 1.0 / 30.0;
     private static final double SECONDS_PER_DAY = 86_400.0;
     private static final double SECONDS_PER_HOUR = 3_600.0;
-
     private static final double CANVAS_WIDTH_PIXELS = 900.0;
     private static final double CANVAS_HEIGHT_PIXELS = 700.0;
     private static final double VIEW_MARGIN_FACTOR = 1.15;
-
     private static final int TRAIL_MAXIMUM_POINTS = 1_500;
     private static final double TRAIL_SEGMENT_DIVISOR = 240.0;
-
     private static final double MIN_TIME_RATE_DAYS_PER_SECOND = 1.0;
     private static final double MAX_TIME_RATE_DAYS_PER_SECOND = 60.0;
     private static final double DEFAULT_TIME_RATE_DAYS_PER_SECOND = 14.0;
     private static final double TIME_RATE_SLIDER_WIDTH_PIXELS = 260.0;
-
     private static final double CONTROL_BAR_SPACING_PIXELS = 10.0;
     private static final double CONTROL_ROW_SPACING_PIXELS = 6.0;
     private static final double CONTROL_PANEL_PADDING_PIXELS = 10.0;
@@ -73,30 +66,24 @@ public final class IntegratorComparisonScreen implements LevelScreen
     private final TrajectoryTrail trail;
     private final ViewTransform transform;
     private final Canvas canvas;
-
     private final Parent simulationRegion;
     private final Parent controlsRegion;
-
     private ComboBox<IntegratorMethod> methodSelector;
     private Button runPauseButton;
     private Button resetButton;
     private Slider timeRateSlider;
-
     private Label timeRateValueLabel;
     private Label stateLabel;
     private Label elapsedLabel;
     private Label currentEnergyLabel;
     private Label currentTrajectoryErrorLabel;
     private Label currentEvaluationsLabel;
-
     private Label eulerEnergyLabel;
     private Label eulerTrajectoryLabel;
     private Label eulerEvaluationsLabel;
-
     private Label verletEnergyLabel;
     private Label verletTrajectoryLabel;
     private Label verletEvaluationsLabel;
-
     private Label rk4EnergyLabel;
     private Label rk4TrajectoryLabel;
     private Label rk4EvaluationsLabel;
@@ -111,9 +98,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
         this.controller = new IntegratorComparisonController();
         this.renderer = new SimulationRenderer();
 
-        this.trail = new TrajectoryTrail(
-                TRAIL_MAXIMUM_POINTS,
-                PhysicalConstants.ASTRONOMICAL_UNIT / TRAIL_SEGMENT_DIVISOR);
+        this.trail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS,PhysicalConstants.ASTRONOMICAL_UNIT / TRAIL_SEGMENT_DIVISOR);
 
         this.transform = ViewTransform.fitting(
                 CANVAS_WIDTH_PIXELS,
@@ -122,10 +107,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
                 0.0,
                 PhysicalConstants.ASTRONOMICAL_UNIT * VIEW_MARGIN_FACTOR);
 
-        this.canvas = new Canvas(
-                CANVAS_WIDTH_PIXELS,
-                CANVAS_HEIGHT_PIXELS);
-
+        this.canvas = new Canvas(CANVAS_WIDTH_PIXELS, CANVAS_HEIGHT_PIXELS);
         this.simulationRegion = new StackPane(canvas);
         this.controlsRegion = buildControlsPanel();
     }
@@ -148,8 +130,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
      */
     private VBox buildControlsPanel()
     {
-        methodSelector = new ComboBox<>(
-                FXCollections.observableArrayList(IntegratorMethod.values()));
+        methodSelector = new ComboBox<>(FXCollections.observableArrayList(IntegratorMethod.values()));
         methodSelector.setValue(controller.selectedMethod());
         methodSelector.setConverter(new javafx.util.StringConverter<>()
         {
@@ -170,8 +151,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
         {
             final IntegratorMethod selected = methodSelector.getValue();
 
-            if (selected != null
-                    && selected != controller.selectedMethod())
+            if (selected != null && selected != controller.selectedMethod())
             {
                 controller.selectMethod(selected);
                 trail.clear();
@@ -203,37 +183,28 @@ public final class IntegratorComparisonScreen implements LevelScreen
                 DEFAULT_TIME_RATE_DAYS_PER_SECOND);
         timeRateSlider.setPrefWidth(TIME_RATE_SLIDER_WIDTH_PIXELS);
 
-        timeRateSlider.valueProperty().addListener(
-                (observable, oldValue, newValue) ->
+        timeRateSlider.valueProperty().addListener((observable, oldValue, newValue) ->
                 {
                     final double daysPerSecond = newValue.doubleValue();
 
-                    controller.setSimulatedSecondsPerRealSecond(
-                            daysPerSecond * SECONDS_PER_DAY);
-
+                    controller.setSimulatedSecondsPerRealSecond(daysPerSecond * SECONDS_PER_DAY);
                     timeRateValueLabel.setText(formatTimeRate(daysPerSecond));
                 });
 
-        controller.setSimulatedSecondsPerRealSecond(
-                DEFAULT_TIME_RATE_DAYS_PER_SECOND * SECONDS_PER_DAY);
-        timeRateValueLabel.setText(
-                formatTimeRate(DEFAULT_TIME_RATE_DAYS_PER_SECOND));
+        controller.setSimulatedSecondsPerRealSecond(DEFAULT_TIME_RATE_DAYS_PER_SECOND * SECONDS_PER_DAY);
+        timeRateValueLabel.setText(formatTimeRate(DEFAULT_TIME_RATE_DAYS_PER_SECOND));
 
         stateLabel = new Label();
         elapsedLabel = new Label();
-
         currentEnergyLabel = new Label();
         currentTrajectoryErrorLabel = new Label();
         currentEvaluationsLabel = new Label();
-
         eulerEnergyLabel = new Label();
         eulerTrajectoryLabel = new Label();
         eulerEvaluationsLabel = new Label();
-
         verletEnergyLabel = new Label();
         verletTrajectoryLabel = new Label();
         verletEvaluationsLabel = new Label();
-
         rk4EnergyLabel = new Label();
         rk4TrajectoryLabel = new Label();
         rk4EvaluationsLabel = new Label();
@@ -257,22 +228,11 @@ public final class IntegratorComparisonScreen implements LevelScreen
                 timeRateValueLabel,
                 labelledValue("Status", stateLabel),
                 labelledValue("Elapsed", elapsedLabel),
-                labelledValue(
-                        "Fixed timestep",
-                        new Label(formatFixedTimeStep())),
+                labelledValue("Fixed timestep", new Label(formatFixedTimeStep())),
                 new Separator(),
                 sectionHeading("CURRENT RUN"),
-                labelledValue(
-                        "Max relative energy deviation",
-                        currentEnergyLabel),
-                labelledValue(
-                        "Max trajectory error vs analytical",
-                        currentTrajectoryErrorLabel),
-                labelledValue(
-                        "Acceleration evaluations",
-                        currentEvaluationsLabel),
-                new Separator(),
-                sectionHeading("COMPLETED COMPARISON"),
+                labelledValue("Max relative energy deviation", currentEnergyLabel), labelledValue("Max trajectory error vs analytical", currentTrajectoryErrorLabel),
+                labelledValue("Acceleration evaluations", currentEvaluationsLabel), new Separator(), sectionHeading("COMPLETED COMPARISON"),
                 comparisonRow(
                         "Integrator",
                         "Energy deviation",
@@ -294,8 +254,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
                         rk4TrajectoryLabel,
                         rk4EvaluationsLabel));
 
-        controlsPanel.setPadding(
-                new Insets(CONTROL_PANEL_PADDING_PIXELS));
+        controlsPanel.setPadding(new Insets(CONTROL_PANEL_PADDING_PIXELS));
 
         return controlsPanel;
     }
@@ -380,18 +339,10 @@ public final class IntegratorComparisonScreen implements LevelScreen
                     return;
                 }
 
-                final double elapsedWallClockSeconds =
-                        elapsedNanos / NANOS_PER_SECOND;
-
-                final double boundedWallClockSeconds =
-                        Math.min(
-                                elapsedWallClockSeconds,
-                                MAX_FRAME_DELTA_SECONDS);
-
+                final double elapsedWallClockSeconds = elapsedNanos / NANOS_PER_SECOND;
+                final double boundedWallClockSeconds = Math.min(elapsedWallClockSeconds, MAX_FRAME_DELTA_SECONDS);
                 final SimulationSnapshot before = controller.snapshot();
-
                 controller.advanceByWallClock(boundedWallClockSeconds);
-
                 final SimulationSnapshot after = controller.snapshot();
 
                 if (after.completedSteps() > before.completedSteps())
@@ -403,14 +354,13 @@ public final class IntegratorComparisonScreen implements LevelScreen
                 refreshControls();
             }
         };
-    }
+    } // ------- end of createTimer() ------------------------------
 
     /**
      * Deactivates the screen and stops its presentation loop.
      */
     @Override
-    public void deactivate()
-    {
+    public void deactivate() {
         stopLoop();
     }
 
@@ -421,10 +371,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
      */
     private static String formatFixedTimeStep()
     {
-        final double hours =
-                IntegratorComparisonExperiment.TIME_STEP_SECONDS
-                        / SECONDS_PER_HOUR;
-
+        final double hours = IntegratorComparisonExperiment.TIME_STEP_SECONDS / SECONDS_PER_HOUR;
         return String.format(Locale.ROOT, "%.0f hours", hours);
     }
 
@@ -436,8 +383,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
      */
     private static String formatRelativeDeviation(final double value)
     {
-        if (value == 0.0)
-        {
+        if (value == 0.0) {
             return "0";
         }
 
@@ -469,10 +415,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
             return String.format(Locale.ROOT, "%.2f km", kilometres);
         }
 
-        return String.format(
-                Locale.ROOT,
-                "%.3e km",
-                kilometres);
+        return String.format(Locale.ROOT,"%.3e km", kilometres);
     }
 
     /**
@@ -483,10 +426,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
      */
     private static String formatTimeRate(final double daysPerSecond)
     {
-        return String.format(
-                Locale.ROOT,
-                "%.0f days / second",
-                daysPerSecond);
+        return String.format(Locale.ROOT,"%.0f days / second", daysPerSecond);
     }
 
     /**
@@ -502,9 +442,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
     {
         value.setWrapText(true);
 
-        return new VBox(
-                new Label(caption),
-                value);
+        return new VBox(new Label(caption), value);
     }
 
     /**
@@ -513,8 +451,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
      * @param snapshot committed simulation snapshot
      * @return planet position, or empty if no planet exists
      */
-    private static Optional<Vector3D> planetPositionOf(
-            final SimulationSnapshot snapshot)
+    private static Optional<Vector3D> planetPositionOf(final SimulationSnapshot snapshot)
     {
         return snapshot.bodies().stream()
                 .filter(
@@ -530,19 +467,13 @@ public final class IntegratorComparisonScreen implements LevelScreen
      */
     private void refreshCurrentResult()
     {
-        final IntegratorComparisonResult result =
-                controller.currentResult();
+        final IntegratorComparisonResult result =  controller.currentResult();
 
-        currentEnergyLabel.setText(
-                formatRelativeDeviation(
-                        result.maxRelativeEnergyDeviation()));
+        currentEnergyLabel.setText(formatRelativeDeviation(result.maxRelativeEnergyDeviation()));
 
-        currentTrajectoryErrorLabel.setText(
-                formatTrajectoryError(
-                        result.maxTrajectoryErrorMetres()));
+        currentTrajectoryErrorLabel.setText(formatTrajectoryError(result.maxTrajectoryErrorMetres()));
 
-        currentEvaluationsLabel.setText(
-                Long.toString(result.accelerationEvaluations()));
+        currentEvaluationsLabel.setText(Long.toString(result.accelerationEvaluations()));
     }
 
     /**
@@ -553,20 +484,10 @@ public final class IntegratorComparisonScreen implements LevelScreen
         final IntegratorComparisonState state = controller.state();
 
         runPauseButton.setText(runPauseText(state));
-        runPauseButton.setDisable(
-                state == IntegratorComparisonState.COMPLETED);
-
+        runPauseButton.setDisable(state == IntegratorComparisonState.COMPLETED);
         methodSelector.setDisable(!controller.canSelectMethod());
-
         stateLabel.setText(stateText(state));
-
-        elapsedLabel.setText(
-                String.format(
-                        Locale.ROOT,
-                        "%.1f days",
-                        controller.snapshot().simulationTimeSeconds()
-                                / SECONDS_PER_DAY));
-
+        elapsedLabel.setText(String.format(Locale.ROOT,"%.1f days",controller.snapshot().simulationTimeSeconds() / SECONDS_PER_DAY));
         refreshCurrentResult();
         refreshCompletedResults();
     }
@@ -609,8 +530,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
             final Label trajectory,
             final Label evaluations)
     {
-        final Optional<IntegratorComparisonResult> result =
-                controller.completedResult(method);
+        final Optional<IntegratorComparisonResult> result = controller.completedResult(method);
 
         if (result.isEmpty())
         {
@@ -622,16 +542,9 @@ public final class IntegratorComparisonScreen implements LevelScreen
 
         final IntegratorComparisonResult completed = result.orElseThrow();
 
-        energy.setText(
-                formatRelativeDeviation(
-                        completed.maxRelativeEnergyDeviation()));
-
-        trajectory.setText(
-                formatTrajectoryError(
-                        completed.maxTrajectoryErrorMetres()));
-
-        evaluations.setText(
-                Long.toString(completed.accelerationEvaluations()));
+        energy.setText(formatRelativeDeviation(completed.maxRelativeEnergyDeviation()));
+        trajectory.setText(formatTrajectoryError(completed.maxTrajectoryErrorMetres()));
+        evaluations.setText(Long.toString(completed.accelerationEvaluations()));
     }
 
     /**
@@ -652,8 +565,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
      * @param state comparison lifecycle state
      * @return button text
      */
-    private static String runPauseText(
-            final IntegratorComparisonState state)
+    private static String runPauseText(final IntegratorComparisonState state)
     {
         return switch (state)
         {
@@ -683,8 +595,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
      * @param state comparison lifecycle state
      * @return display text
      */
-    private static String stateText(
-            final IntegratorComparisonState state)
+    private static String stateText(final IntegratorComparisonState state)
     {
         return switch (state)
         {
@@ -700,10 +611,8 @@ public final class IntegratorComparisonScreen implements LevelScreen
      */
     private void startLoop()
     {
-        if (animationTimer != null)
-        {
-            throw new IllegalStateException(
-                    "animation loop is already started");
+        if (animationTimer != null) {
+            throw new IllegalStateException("animation loop is already started");
         }
 
         animationTimer = createTimer();
@@ -728,8 +637,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
      * @return controls view
      */
     @Override
-    public Parent controlsView()
-    {
+    public Parent controlsView() {
         return controlsRegion;
     }
 
@@ -739,8 +647,7 @@ public final class IntegratorComparisonScreen implements LevelScreen
      * @return simulation view
      */
     @Override
-    public Parent simulationView()
-    {
+    public Parent simulationView() {
         return simulationRegion;
     }
 }

@@ -5,7 +5,6 @@ import io.github.eugenp84.orbitalsim.evaluation.integrator.IntegratorComparisonE
 import io.github.eugenp84.orbitalsim.evaluation.integrator.IntegratorComparisonResult;
 import io.github.eugenp84.orbitalsim.evaluation.integrator.IntegratorComparisonRun;
 import io.github.eugenp84.orbitalsim.evaluation.integrator.IntegratorMethod;
-
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
@@ -16,27 +15,21 @@ import java.util.Optional;
  * Drives the interactive numerical-integrator comparison on behalf of the
  * application view.
  * <p>
- * The controller owns one incremental comparison run at a time and retains
- * completed results for the three integration methods. It controls only
- * presentation lifecycle and playback rate; the experiment continues to own
- * the physical configuration, fixed numerical timestep, duration and
- * measurement definitions.
+ * The controller owns one incremental comparison run at a time and retains completed results for the three integration methods.
+ * It controls only presentation lifecycle and playback rate; the experiment continues to own the physical configuration, fixed numerical timestep, duration and measurement definitions.
  * <p>
  * Wall-clock advancement is converted into simulated time and accumulated.
- * The underlying run is advanced only in complete fixed integration steps, so
- * changing presentation speed never changes the numerical timestep.
+ * The underlying run is advanced only in complete fixed integration steps,
+ * so changing presentation speed never changes the numerical timestep.
  * <p>
- * This controller is JavaFX-free. The view may therefore observe and drive it
- * without introducing presentation dependencies into the evaluation layer.
+ * This controller is JavaFX-free. The view may therefore observe and drive it without introducing presentation dependencies into the evaluation layer.
  *
  * @author Eugeniu PLATITA
  */
 public final class IntegratorComparisonController
 {
     private static final double SECONDS_PER_DAY = 86_400.0;
-
-    private static final double DEFAULT_SIMULATED_SECONDS_PER_REAL_SECOND =
-            14.0 * SECONDS_PER_DAY;
+    private static final double DEFAULT_SIMULATED_SECONDS_PER_REAL_SECOND = 14.0 * SECONDS_PER_DAY;
 
     private final IntegratorComparisonExperiment experiment;
     private final Map<IntegratorMethod, IntegratorComparisonResult>
@@ -51,8 +44,7 @@ public final class IntegratorComparisonController
     /**
      * Creates a controller with Forward Euler selected and a fresh baseline run.
      */
-    public IntegratorComparisonController()
-    {
+    public IntegratorComparisonController() {
         this(new IntegratorComparisonExperiment());
     }
 
@@ -61,16 +53,11 @@ public final class IntegratorComparisonController
      *
      * @param experiment controlled comparison experiment; never null
      */
-    IntegratorComparisonController(
-            final IntegratorComparisonExperiment experiment)
+    IntegratorComparisonController(final IntegratorComparisonExperiment experiment)
     {
-        this.experiment =
-                Objects.requireNonNull(experiment, "experiment must not be null");
-
+        this.experiment = Objects.requireNonNull(experiment, "experiment must not be null");
         this.selectedMethod = IntegratorMethod.FORWARD_EULER;
-        this.simulatedSecondsPerRealSecond =
-                DEFAULT_SIMULATED_SECONDS_PER_REAL_SECOND;
-
+        this.simulatedSecondsPerRealSecond = DEFAULT_SIMULATED_SECONDS_PER_REAL_SECOND;
         replaceRun();
     }
 
@@ -78,29 +65,24 @@ public final class IntegratorComparisonController
      * Advances the current comparison according to an elapsed wall-clock
      * interval.
      * <p>
-     * Advancement occurs only while running. Simulated time that is insufficient
-     * for a complete fixed integration step is retained for a later call.
+     * Advancement occurs only while running.
+     * Simulated time that is insufficient for a complete fixed integration step is retained for a later call.
      *
      * @param wallClockSeconds elapsed real time; non-negative and finite
-     * @throws IllegalArgumentException if the interval is negative or non-finite,
-     *         or if conversion to simulated time overflows
+     * @throws IllegalArgumentException if the interval is negative or non-finite, or if conversion to simulated time overflows
      */
     public void advanceByWallClock(final double wallClockSeconds)
     {
         if (!Double.isFinite(wallClockSeconds) || wallClockSeconds < 0.0)
         {
-            throw new IllegalArgumentException(
-                    "wallClockSeconds must be non-negative and finite, was: "
-                            + wallClockSeconds);
+            throw new IllegalArgumentException("wallClockSeconds must be non-negative and finite, was: " + wallClockSeconds);
         }
 
-        if (state != IntegratorComparisonState.RUNNING)
-        {
+        if (state != IntegratorComparisonState.RUNNING) {
             return;
         }
 
-        final double simulatedSeconds =
-                wallClockSeconds * simulatedSecondsPerRealSecond;
+        final double simulatedSeconds = wallClockSeconds * simulatedSecondsPerRealSecond;
 
         if (!Double.isFinite(simulatedSeconds))
         {
@@ -116,17 +98,14 @@ public final class IntegratorComparisonController
 
         if (!Double.isFinite(pendingSimulatedSeconds))
         {
-            throw new IllegalArgumentException(
-                    "accumulated simulated duration became non-finite");
+            throw new IllegalArgumentException("accumulated simulated duration became non-finite");
         }
 
-        while (pendingSimulatedSeconds
-                >= IntegratorComparisonExperiment.TIME_STEP_SECONDS)
+        while (pendingSimulatedSeconds >= IntegratorComparisonExperiment.TIME_STEP_SECONDS)
         {
             run.step();
 
-            pendingSimulatedSeconds -=
-                    IntegratorComparisonExperiment.TIME_STEP_SECONDS;
+            pendingSimulatedSeconds -= IntegratorComparisonExperiment.TIME_STEP_SECONDS;
 
             if (run.isComplete())
             {
@@ -179,14 +158,12 @@ public final class IntegratorComparisonController
     }
 
     /**
-     * Returns the completed result for one integration method, if that method has
-     * completed during this application session.
+     * Returns the completed result for one integration method, if that method has completed during this application session.
      *
      * @param method integration method
      * @return completed result, or empty when no completed run is retained
      */
-    public Optional<IntegratorComparisonResult> completedResult(
-            final IntegratorMethod method)
+    public Optional<IntegratorComparisonResult> completedResult(final IntegratorMethod method)
     {
         Objects.requireNonNull(method, "method must not be null");
 
@@ -215,8 +192,7 @@ public final class IntegratorComparisonController
 
         if (!canSelectMethod())
         {
-            throw new IllegalStateException(
-                    "Integrator cannot be changed while a comparison run is active");
+            throw new IllegalStateException("Integrator cannot be changed while a comparison run is active");
         }
 
         selectedMethod = method;
@@ -236,18 +212,14 @@ public final class IntegratorComparisonController
     /**
      * Sets the presentation speed without changing the fixed numerical timestep.
      *
-     * @param value simulated seconds requested per real second; positive and
-     *              finite
+     * @param value simulated seconds requested per real second; positive and finite
      * @throws IllegalArgumentException if the value is not positive and finite
      */
     public void setSimulatedSecondsPerRealSecond(final double value)
     {
         if (!Double.isFinite(value) || value <= 0.0)
         {
-            throw new IllegalArgumentException(
-                    "simulated-seconds-per-real-second must be positive and finite, "
-                            + "was: "
-                            + value);
+            throw new IllegalArgumentException("simulated-seconds-per-real-second must be positive and finite, " + "was: " + value);
         }
 
         simulatedSecondsPerRealSecond = value;
@@ -287,13 +259,12 @@ public final class IntegratorComparisonController
             case PAUSED -> IntegratorComparisonState.RUNNING;
             case COMPLETED -> IntegratorComparisonState.COMPLETED;
         };
-    }
+    } // end of toggleRun()
 
     /**
      * Records the completed result and enters the completed state.
      */
-    private void completeRun()
-    {
+    private void completeRun() {
         completedResults.put(selectedMethod, run.result());
         state = IntegratorComparisonState.COMPLETED;
         pendingSimulatedSeconds = 0.0;

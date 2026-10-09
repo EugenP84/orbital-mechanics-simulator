@@ -19,9 +19,9 @@ import java.util.Map;
  * so the learning and core layers stay free of any presentation dependency.
  * It holds no state between calls: the trail is owned elsewhere and supplied per frame.
  * <p>
- * Bodies are drawn as fixed pixel radii keyed to their type, not their physical radius, since a
- * physically-to-scale planet would be far smaller than one pixel;
- * the discs are display symbols marking position. The trail is drawn under the bodies so the current positions stay legible.
+ * Bodies are drawn as fixed pixel radii keyed to their type, not their physical radius, since a physically-to-scale planet would be far smaller than one pixel;
+ * the discs are display symbols marking position.
+ * The trail is drawn under the bodies so the current positions stay legible.
  * <p>
  * The world XY plane is drawn; any z-component is not projected, consistent with the 2D view.
  *

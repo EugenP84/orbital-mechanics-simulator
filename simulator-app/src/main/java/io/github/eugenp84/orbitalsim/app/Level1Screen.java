@@ -15,7 +15,6 @@ import io.github.eugenp84.orbitalsim.learning.scenario.Hint;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level1Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
-
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -27,7 +26,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-
 import java.util.Locale;
 import java.util.Optional;
 
@@ -47,7 +45,6 @@ import java.util.Optional;
 public final class Level1Screen implements LevelScreen
 {
     private static final String INTEGRATOR_VALUE = "Velocity Verlet (fixed)";
-
     private static final double CANVAS_WIDTH_PIXELS = 900.0;
     private static final double CANVAS_HEIGHT_PIXELS = 700.0;
     private static final double VIEW_MARGIN_FACTOR = 1.15;
@@ -81,7 +78,6 @@ public final class Level1Screen implements LevelScreen
     private final SimulationViewCore core;
     private final Parent simulationRegion;
     private final Parent controlsRegion;
-
     private Slider orbitalSpeedSlider;
     private Label orbitalSpeedValueLabel;
     private Label hintLabel;
@@ -96,7 +92,6 @@ public final class Level1Screen implements LevelScreen
     {
         final Level1Scenario scenario = new Level1Scenario();
         this.controller = new SimulationController(scenario);
-
         final TrajectoryTrail trail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, scenario.orbitalRadiusMetres() / TRAIL_SEGMENT_DIVISOR);
 
         final ViewTransform transform = ViewTransform.fitting(
@@ -142,7 +137,6 @@ public final class Level1Screen implements LevelScreen
         orbitalSpeedSlider.setMajorTickUnit(SPEED_FRACTION_STEP);
         orbitalSpeedSlider.setMinorTickCount(0);
         orbitalSpeedSlider.setSnapToTicks(true);
-
         orbitalSpeedSlider.valueProperty().addListener((observable, oldValue, newValue) ->
         {
             updateOrbitalSpeedLabel(newValue.doubleValue());
@@ -162,7 +156,6 @@ public final class Level1Screen implements LevelScreen
 
         hintLabel = new Label();
         hintLabel.setWrapText(true);
-
         final HBox buttonRow = new HBox(CONTROL_BAR_SPACING_PIXELS, core.runPauseButton(), core.resetButton());
         buttonRow.setAlignment(Pos.CENTER_LEFT);
 
@@ -194,7 +187,6 @@ public final class Level1Screen implements LevelScreen
         }
         final double fraction = quantiseSpeedFraction(orbitalSpeedSlider.getValue());
         final double speed = fraction * controller.circularSpeedMetresPerSecond();
-
         final AttemptCreationResult result = controller.configureAttempt(speed);
         if (result == AttemptCreationResult.CREATED)
         {
@@ -221,9 +213,7 @@ public final class Level1Screen implements LevelScreen
         core.stopLoop();
     }
 
-    private static String hintTextFor(
-            final ScenarioLifecycleState state,
-            final Optional<Hint> hint)
+    private static String hintTextFor(final ScenarioLifecycleState state, final Optional<Hint> hint)
     {
         final boolean attemptActive = state == ScenarioLifecycleState.RUNNING
                 || state == ScenarioLifecycleState.PAUSED;
@@ -325,38 +315,28 @@ public final class Level1Screen implements LevelScreen
         final Optional<BodySnapshot> star = snapshot.bodies().stream()
                 .filter(body -> body.definition().type() == CelestialBodyType.STAR)
                 .findFirst();
-        final Optional<BodySnapshot> planet = snapshot.bodies().stream()
-                .filter(body -> body.definition().type() == CelestialBodyType.PLANET)
-                .findFirst();
+        final Optional<BodySnapshot> planet = snapshot.bodies().stream().filter(body -> body.definition().type() == CelestialBodyType.PLANET).findFirst();
 
-        if (star.isEmpty() || planet.isEmpty())
-        {
+        if (star.isEmpty() || planet.isEmpty()) {
             showUnavailableOrbit();
             return;
         }
 
         final BodySnapshot primary = star.orElseThrow();
         final BodySnapshot secondary = planet.orElseThrow();
-        final Vector3D relativePosition = secondary.state().position()
-                .subtract(primary.state().position());
-        final Vector3D relativeVelocity = secondary.state().velocity()
-                .subtract(primary.state().velocity());
-        final double mu = PhysicalConstants.GRAVITATIONAL_CONSTANT
-                * (primary.definition().mass() + secondary.definition().mass());
+        final Vector3D relativePosition = secondary.state().position().subtract(primary.state().position());
+        final Vector3D relativeVelocity = secondary.state().velocity().subtract(primary.state().velocity());
+        final double mu = PhysicalConstants.GRAVITATIONAL_CONSTANT * (primary.definition().mass() + secondary.definition().mass());
 
         try
         {
-            final OrbitalStateAnalysis orbit = OrbitalStateCalculator.analyse(
-                    relativePosition, relativeVelocity, mu);
+            final OrbitalStateAnalysis orbit = OrbitalStateCalculator.analyse(relativePosition, relativeVelocity, mu);
             final double eccentricity = orbit.eccentricity();
-            eccentricityLabel.setText(String.format(
-                    Locale.ROOT, "Eccentricity (e): %.4f", eccentricity));
-            currentDistanceLabel.setText("Current distance: "
-                    + formatAu(relativePosition.magnitude()));
+            eccentricityLabel.setText(String.format(Locale.ROOT, "Eccentricity (e): %.4f", eccentricity));
+            currentDistanceLabel.setText("Current distance: " + formatAu(relativePosition.magnitude()));
 
             // Bound, non-radial Keplerian osculating ellipse only.
-            if (orbit.specificOrbitalEnergy() < 0.0
-                    && !orbit.isRadial() && orbit.semiMajorAxis().isPresent())
+            if (orbit.specificOrbitalEnergy() < 0.0 && !orbit.isRadial() && orbit.semiMajorAxis().isPresent())
             {
                 final double a = orbit.semiMajorAxis().getAsDouble();
                 semiMajorAxisLabel.setText("Semi-major axis: " + formatAu(a));
@@ -370,8 +350,7 @@ public final class Level1Screen implements LevelScreen
                 apoapsisLabel.setText("Apoapsis: N/A (bound orbit)");
             }
         }
-        catch (IllegalArgumentException invalidState)
-        {
+        catch (IllegalArgumentException invalidState) {
             showUnavailableOrbit();
         }
     }

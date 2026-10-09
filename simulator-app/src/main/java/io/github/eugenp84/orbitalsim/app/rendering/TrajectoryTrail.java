@@ -1,7 +1,6 @@
 package io.github.eugenp84.orbitalsim.app.rendering;
 
 import io.github.eugenp84.orbitalsim.core.math.Vector3D;
-
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Collections;
@@ -14,9 +13,8 @@ import java.util.Objects;
  * This is app-layer state with no bearing on the simulation: the physics, the engine and the learning layer never see it.
  * Points are held in world metres, so the trail is defined physically and renders correctly whatever view transform is applied to it.
  * <p>
- * Two bounds keep it finite and legible. A point is recorded only once the body has moved at least a
- * minimum distance from the last recorded point, so the trail has a uniform spatial density
- * regardless of frame rate or simulation speed; and the number of retained points is capped,
+ * Two bounds keep it finite and legible. A point is recorded only once the body has moved at least a minimum distance from the last recorded point,
+ * so the trail has a uniform spatial density regardless of frame rate or simulation speed; and the number of retained points is capped,
  * the oldest dropped first, so a long run cannot grow the buffer without limit.
  * It is cleared whenever a new attempt begins, so one attempt's path never bleeds into the next.
  * <p>
@@ -29,7 +27,6 @@ public final class TrajectoryTrail
     private final int maximumPoints;
     private double minimumSegmentSquaredMetres;
     private final Deque<Vector3D> points = new ArrayDeque<>();
-
     private Vector3D lastRecorded;
 
     /**
@@ -95,8 +92,7 @@ public final class TrajectoryTrail
 
     /**
      * Changes the minimum distance the body must move before another point is recorded, and clears the trail so the new spacing applies from a clean start.
-     * Used when a scenario's characteristic scale changes — for example when the learner changes the orbital distance
-     * so the trail's spatial density stays appropriate to the current orbit.
+     * Used when a scenario's characteristic scale changes — for example when the learner changes the orbital distance so the trail's spatial density stays appropriate to the current orbit.
      *
      * @param minimumSegmentMetres the new minimum segment distance in metres; positive and finite, and small enough that its square is finite
      * @throws IllegalArgumentException if the value is not positive and finite, or its square overflows

@@ -6,7 +6,6 @@ import io.github.eugenp84.orbitalsim.learning.scenario.Level0Attempt;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level0Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioTerminationReason;
-
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -14,11 +13,9 @@ import java.util.OptionalDouble;
 /**
  * Coordinates a running Level 0 (Planet Creation) scenario on behalf of the user interface.
  * <p>
- * Lifecycle and presentation behaviour shared by every level — run/pause, wall-clock-to-simulated
- * advancement, snapshot and lifecycle access, presentation speed — is delegated to a {@link
- * ScenarioPlayer}. This controller adds only Level 0's configuration surface: building an attempt
- * from the learner's chosen mass, radius, distance and tangential speed, and exposing those values
- * plus the circular-speed reference for the current distance.
+ * Lifecycle and presentation behaviour shared by every level — run/pause, wall-clock-to-simulated advancement, snapshot and lifecycle access, presentation speed — is delegated to a {@link ScenarioPlayer}.
+ * This controller adds only Level 0's configuration surface:
+ * building an attempt from the learner's chosen mass, radius, distance and tangential speed, and exposing those values plus the circular-speed reference for the current distance.
  * <p>
  * On construction an Earth-like default attempt is installed immediately, so the view always has a committed state to render before the learner configures anything. The default tangential speed is
  * derived from the default configuration through {@link Level0Scenario}'s own physical relationship rather than hard-coded, so it cannot drift from the model.
@@ -30,10 +27,8 @@ public final class Level0Controller implements ScenarioControls
     private static final double DEFAULT_MASS_KILOGRAMS = PhysicalConstants.EARTH_MASS;
     private static final double DEFAULT_RADIUS_METRES = PhysicalConstants.EARTH_RADIUS;
     private static final double DEFAULT_DISTANCE_METRES = PhysicalConstants.ASTRONOMICAL_UNIT;
-
     private final Level0Scenario scenario;
     private final ScenarioPlayer player;
-
     private double configuredMassKilograms;
     private double configuredRadiusMetres;
     private double configuredDistanceMetres;
@@ -48,10 +43,8 @@ public final class Level0Controller implements ScenarioControls
     public Level0Controller(final Level0Scenario scenario)
     {
         this.scenario = Objects.requireNonNull(scenario, "scenario must not be null");
-        final double defaultSpeed = scenario.circularSpeedMetresPerSecond(
-                DEFAULT_MASS_KILOGRAMS, DEFAULT_DISTANCE_METRES);
-        final Level0Attempt attempt = scenario.createAttempt(
-                DEFAULT_MASS_KILOGRAMS, DEFAULT_RADIUS_METRES, DEFAULT_DISTANCE_METRES, defaultSpeed);
+        final double defaultSpeed = scenario.circularSpeedMetresPerSecond(DEFAULT_MASS_KILOGRAMS, DEFAULT_DISTANCE_METRES);
+        final Level0Attempt attempt = scenario.createAttempt(DEFAULT_MASS_KILOGRAMS, DEFAULT_RADIUS_METRES, DEFAULT_DISTANCE_METRES, defaultSpeed);
         this.player = new ScenarioPlayer(attempt.session());
         recordConfiguration(attempt);
     }
@@ -60,17 +53,14 @@ public final class Level0Controller implements ScenarioControls
      * Advances by the simulated time corresponding to the given wall-clock interval, but only while running.
      *
      * @param wallClockSeconds elapsed real time for this frame; non-negative and finite
-     * @throws IllegalArgumentException if the argument is negative or non-finite, or if it and the
-     *         presentation speed produce a non-finite duration
+     * @throws IllegalArgumentException if the argument is negative or non-finite, or if it and the presentation speed produce a non-finite duration
      */
-    public void advanceByWallClock(final double wallClockSeconds)
-    {
+    public void advanceByWallClock(final double wallClockSeconds) {
         player.advanceByWallClock(wallClockSeconds);
     }
 
     /** Whether a run/pause/resume control should be offered; false only when terminated. */
-    public boolean canToggleRun()
-    {
+    public boolean canToggleRun() {
         return player.canToggleRun();
     }
 
@@ -83,8 +73,7 @@ public final class Level0Controller implements ScenarioControls
     /**
      * Builds and installs a fresh, not-yet-started attempt from the given planet parameters.
      * <p>
-     * Level 0 has no assessability refusal: an invalid configuration throws, and construction occurs
-     * before any controller state is modified, so a rejected configuration leaves the previous attempt unchanged.
+     * Level 0 has no assessability refusal: an invalid configuration throws, and construction occurs before any controller state is modified, so a rejected configuration leaves the previous attempt unchanged.
      *
      * @param massKilograms       the planet's mass; positive and finite
      * @param radiusMetres        the planet's radius; positive and finite
@@ -98,15 +87,13 @@ public final class Level0Controller implements ScenarioControls
             final double distanceMetres,
             final double tangentialSpeedMetresPerSecond)
     {
-        final Level0Attempt attempt = scenario.createAttempt(
-                massKilograms, radiusMetres, distanceMetres, tangentialSpeedMetresPerSecond);
+        final Level0Attempt attempt = scenario.createAttempt(massKilograms, radiusMetres, distanceMetres, tangentialSpeedMetresPerSecond);
         player.install(attempt.session());
         recordConfiguration(attempt);
     }
 
     /** The currently configured star–planet distance, in metres. */
-    public double configuredDistanceMetres()
-    {
+    public double configuredDistanceMetres() {
         return configuredDistanceMetres;
     }
 
@@ -117,8 +104,7 @@ public final class Level0Controller implements ScenarioControls
     }
 
     /** The currently configured planet radius, in metres. */
-    public double configuredRadiusMetres()
-    {
+    public double configuredRadiusMetres() {
         return configuredRadiusMetres;
     }
 
@@ -152,8 +138,7 @@ public final class Level0Controller implements ScenarioControls
      * @param value simulated seconds requested per real second; positive and finite
      * @throws IllegalArgumentException if the value is not positive and finite
      */
-    public void setSimulatedSecondsPerRealSecond(final double value)
-    {
+    public void setSimulatedSecondsPerRealSecond(final double value) {
         player.setSimulatedSecondsPerRealSecond(value);
     }
 
@@ -164,8 +149,7 @@ public final class Level0Controller implements ScenarioControls
     }
 
     /** The latest committed simulation state, for rendering. */
-    public SimulationSnapshot snapshot()
-    {
+    public SimulationSnapshot snapshot() {
         return player.snapshot();
     }
 
@@ -177,8 +161,7 @@ public final class Level0Controller implements ScenarioControls
 
     /**
      * Why the scenario terminated, or empty if it has not terminated.
-     * Level 0 has no learner-failure path, but the session may still terminate for an infrastructure reason such as
-     * {@link ScenarioTerminationReason#SIMULATION_BREAKDOWN}, so the result is exposed for symmetry.
+     * Level 0 has no learner-failure path, but the session may still terminate for an infrastructure reason such as {@link ScenarioTerminationReason#SIMULATION_BREAKDOWN}, so the result is exposed for symmetry.
      */
     public Optional<ScenarioTerminationReason> terminationReason()
     {
@@ -186,8 +169,7 @@ public final class Level0Controller implements ScenarioControls
     }
 
     /** Applies the single run/pause/resume transition legal in the current state. */
-    public void toggleRun()
-    {
+    public void toggleRun() {
         player.toggleRun();
     }
 

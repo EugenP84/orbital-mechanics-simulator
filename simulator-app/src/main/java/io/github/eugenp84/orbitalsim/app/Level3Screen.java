@@ -23,48 +23,36 @@ import java.util.Locale;
 import java.util.Optional;
 
 /**
- * The Level 3 (Gravitational Perturbation) screen: the learner varies the perturbing planet's mass
- * and initial stellar distance and observes how strongly it perturbs an Earth-like target orbit.
+ * The Level 3 (Gravitational Perturbation) screen: the learner varies the perturbing planet's mass and initial stellar distance and observes how strongly it perturbs an Earth-like target orbit.
  * <p>
- * The generic presentation lives in {@link SimulationViewCore}. This screen supplies Level 3's two
- * configuration controls and the running maximum target eccentricity, which is the learner-facing
+ * The generic presentation lives in {@link SimulationViewCore}.
+ * This screen supplies L3's two configuration controls and the running maximum target eccentricity, which is the learner-facing
  * perturbation measure.
  * <p>
- * Level 3 uses a fixed three-AU viewport for every configuration and throughout every run. Keeping
- * the visual scale constant makes perturbation experiments directly comparable and avoids treating
- * the configured initial perturber distance as a bound on later motion. The view does not
- * automatically follow or fit bodies that move outside this extent.
+ * L3 uses a fixed three-AU viewport for every configuration and throughout every run.
+ * Keeping the visual scale constant makes perturbation experiments directly comparable and avoids treating the configured initial perturber distance as a bound on later motion.
+ * The view does not automatically follow or fit bodies that move outside this extent.
  * <p>
  * The trajectory trail follows the fixed Earth-like target rather than the configurable perturber.
- * Configuration controls define an attempt and are therefore locked while the scenario is running
- * or paused. Reconfiguration creates a fresh attempt and clears the previous trajectory.
+ * Configuration controls define an attempt and are therefore locked while the scenario is running or paused. Reconfiguration creates a fresh attempt and clears the previous trajectory.
  *
  * @author Eugeniu PLATITA
  */
 public final class Level3Screen implements LevelScreen
 {
     private static final String INTEGRATOR_VALUE = "Velocity Verlet (fixed)";
-
     private static final double CANVAS_WIDTH_PIXELS = 900.0;
     private static final double CANVAS_HEIGHT_PIXELS = 700.0;
-    private static final double VIEW_RADIUS_METRES =
-            3.0 * PhysicalConstants.ASTRONOMICAL_UNIT;
-
-    private static final double JUPITER_MASS =
-            317.8 * PhysicalConstants.EARTH_MASS;
-    private static final double ASTRONOMICAL_UNIT =
-            PhysicalConstants.ASTRONOMICAL_UNIT;
-
+    private static final double VIEW_RADIUS_METRES = 3.0 * PhysicalConstants.ASTRONOMICAL_UNIT;
+    private static final double JUPITER_MASS = 317.8 * PhysicalConstants.EARTH_MASS;
+    private static final double ASTRONOMICAL_UNIT = PhysicalConstants.ASTRONOMICAL_UNIT;
     private static final double MASS_STEP_JUPITERS = 0.1;
     private static final double DISTANCE_STEP_AU = 0.1;
-
     private static final double CONFIGURATION_EPSILON = 1.0e-9;
-
     private static final double CONTROL_BAR_SPACING_PIXELS = 10.0;
     private static final double CONTROL_ROW_SPACING_PIXELS = 6.0;
     private static final double CONTROL_PANEL_PADDING_PIXELS = 10.0;
     private static final double PARAMETER_SLIDER_WIDTH_PIXELS = 260.0;
-
     private static final int TRAIL_MAXIMUM_POINTS = 1_500;
     private static final double TRAIL_SEGMENT_DIVISOR = 240.0;
 
@@ -72,7 +60,6 @@ public final class Level3Screen implements LevelScreen
     private final SimulationViewCore core;
     private final Parent simulationRegion;
     private final Parent controlsRegion;
-
     private Slider massSlider;
     private Slider distanceSlider;
     private Label massValueLabel;
@@ -83,7 +70,6 @@ public final class Level3Screen implements LevelScreen
     public Level3Screen()
     {
         this.controller = new Level3Controller(new Level3Scenario());
-
         final double trailSegmentMetres = PhysicalConstants.ASTRONOMICAL_UNIT / TRAIL_SEGMENT_DIVISOR;
         final TrajectoryTrail targetTrail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, trailSegmentMetres);
         final TrajectoryTrail perturberTrail = new TrajectoryTrail(TRAIL_MAXIMUM_POINTS, trailSegmentMetres);
@@ -95,8 +81,7 @@ public final class Level3Screen implements LevelScreen
                 0.0,
                 VIEW_RADIUS_METRES);
 
-        final Canvas canvas =
-                new Canvas(CANVAS_WIDTH_PIXELS, CANVAS_HEIGHT_PIXELS);
+        final Canvas canvas = new Canvas(CANVAS_WIDTH_PIXELS, CANVAS_HEIGHT_PIXELS);
 
         this.core = new SimulationViewCore(
                 controller,
@@ -194,11 +179,8 @@ public final class Level3Screen implements LevelScreen
 
     private void commitConfiguration()
     {
-        final double massKilograms =
-                quantise(massSlider.getValue(), MASS_STEP_JUPITERS) * JUPITER_MASS;
-        final double distanceMetres =
-                quantise(distanceSlider.getValue(), DISTANCE_STEP_AU)
-                        * ASTRONOMICAL_UNIT;
+        final double massKilograms = quantise(massSlider.getValue(), MASS_STEP_JUPITERS) * JUPITER_MASS;
+        final double distanceMetres = quantise(distanceSlider.getValue(), DISTANCE_STEP_AU) * ASTRONOMICAL_UNIT;
 
         if (!configurationChanged(massKilograms, distanceMetres))
         {
@@ -207,10 +189,8 @@ public final class Level3Screen implements LevelScreen
 
         controller.configureAttempt(massKilograms, distanceMetres);
 
-        final double configuredMassJupiters =
-                controller.configuredPerturberMassKilograms() / JUPITER_MASS;
-        final double configuredDistanceAu =
-                controller.configuredPerturberDistanceMetres() / ASTRONOMICAL_UNIT;
+        final double configuredMassJupiters = controller.configuredPerturberMassKilograms() / JUPITER_MASS;
+        final double configuredDistanceAu = controller.configuredPerturberDistanceMetres() / ASTRONOMICAL_UNIT;
 
         if (Double.compare(massSlider.getValue(), configuredMassJupiters) != 0)
         {
@@ -231,12 +211,10 @@ public final class Level3Screen implements LevelScreen
             final double distanceMetres)
     {
         final double selectedMassJupiters = massKilograms / JUPITER_MASS;
-        final double configuredMassJupiters =
-                controller.configuredPerturberMassKilograms() / JUPITER_MASS;
+        final double configuredMassJupiters = controller.configuredPerturberMassKilograms() / JUPITER_MASS;
 
         final double selectedDistanceAu = distanceMetres / ASTRONOMICAL_UNIT;
-        final double configuredDistanceAu =
-                controller.configuredPerturberDistanceMetres() / ASTRONOMICAL_UNIT;
+        final double configuredDistanceAu = controller.configuredPerturberDistanceMetres() / ASTRONOMICAL_UNIT;
 
         return Math.abs(selectedMassJupiters - configuredMassJupiters)
                 > CONFIGURATION_EPSILON
@@ -330,8 +308,7 @@ public final class Level3Screen implements LevelScreen
     }
 
     @Override
-    public Parent simulationView()
-    {
+    public Parent simulationView() {
         return simulationRegion;
     }
 
@@ -343,27 +320,13 @@ public final class Level3Screen implements LevelScreen
                 .findFirst();
     }
 
-    private void updateMaxEccentricityLabel()
-    {
-        maxEccentricityLabel.setText(
-                String.format(
-                        Locale.ROOT,
-                        "%.4f",
-                        controller.maxEccentricity()));
+    private void updateMaxEccentricityLabel() {
+        maxEccentricityLabel.setText(String.format(Locale.ROOT,"%.4f", controller.maxEccentricity()));
     }
 
     private void updateSliderValueLabels()
     {
-        massValueLabel.setText(
-                String.format(
-                        Locale.ROOT,
-                        "%.1f Jupiter masses",
-                        quantise(massSlider.getValue(), MASS_STEP_JUPITERS)));
-
-        distanceValueLabel.setText(
-                String.format(
-                        Locale.ROOT,
-                        "%.1f AU",
-                        quantise(distanceSlider.getValue(), DISTANCE_STEP_AU)));
+        massValueLabel.setText(String.format(Locale.ROOT,"%.1f Jupiter masses", quantise(massSlider.getValue(), MASS_STEP_JUPITERS)));
+        distanceValueLabel.setText(String.format(Locale.ROOT,"%.1f AU", quantise(distanceSlider.getValue(), DISTANCE_STEP_AU)));
     }
 }

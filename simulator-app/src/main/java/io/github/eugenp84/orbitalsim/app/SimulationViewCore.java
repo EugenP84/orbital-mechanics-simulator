@@ -23,21 +23,16 @@ import java.util.function.Function;
 import java.util.Map;
 
 /**
- * The level-agnostic presentation core shared by every scenario screen: the animation loop, the
- * trajectory trail, the rendering, and the generic controls (run/pause, reset, time rate, status,
- * integrator, elapsed) that behave identically for every level.
+ * The level-agnostic presentation core shared by every scenario screen: the animation loop, the trajectory trail, the rendering,
+ * and the generic controls (run/pause, reset, time rate, status, integrator, elapsed) that behave identically for every level.
  * <p>
- * It drives its scenario only through the {@link ScenarioControls} surface, so it has no knowledge of
- * orbital speed, hints, or planet parameters. The generic status word and colour are level-agnostic,
- * but the learner-facing interpretation of a termination reason, the selection of which body the trail
+ * It drives its scenario only through the {@link ScenarioControls} surface, so it has no knowledge of orbital speed, hints, or planet parameters.
+ * The generic status word and colour are level-agnostic, but the learner-facing interpretation of a termination reason, the selection of which body the trail
  * follows, and the integrator label text are supplied by the screen.
- * The core owns and wires its generic control widgets and exposes them individually — as bare values, without captions —
- * so each screen decides how to caption and arrange them; the core never knows how a screen lays out its panel.
+ * The core owns and wires its generic control widgets and exposes them individually — as bare values, without captions — so each screen decides how to caption and arrange them; the core never knows how a screen lays out its panel.
  * <p>
- * The view may use either a replaceable fixed transform ({@link #setTransform(ViewTransform)}) or a
- * snapshot-dependent transform provider ({@link #setTransformProvider(Function)}) for a moving camera.
- * Advancement and rendering run on the JavaFX Application Thread; the loop runs continuously and
- * advances only while running.
+ * The view may use either a replaceable fixed transform ({@link #setTransform(ViewTransform)}) or a snapshot-dependent transform provider ({@link #setTransformProvider(Function)}) for a moving camera.
+ * Advancement and rendering run on the JavaFX Application Thread; the loop runs continuously and advances only while running.
  *
  * @author Eugeniu PLATITA
  */
@@ -78,15 +73,13 @@ public final class SimulationViewCore
     private final Label integratorLabel;
     private final Label timeRateValueLabel = new Label();
     private final Slider timeRateSlider;
-
     private ViewTransform transform;
     private Function<SimulationSnapshot, ViewTransform> transformProvider;
     private AnimationTimer animationTimer;
 
     /**
      * Creates a presentation core driving the given controls, rendering onto the given canvas through the given transform,
-     * recording motion into the given trail, refreshing level-specific controls
-     * through the given callback, interpreting termination reasons through the given text mapping,
+     * recording motion into the given trail, refreshing level-specific controls through the given callback, interpreting termination reasons through the given text mapping,
      * selecting the trailed body through the given position function, and labelling the integrator with the given bare value text (the screen supplies its caption).
      *
      * @param controls             the level-agnostic surface driving the scenario; never null
@@ -153,8 +146,7 @@ public final class SimulationViewCore
         }
 
         Objects.requireNonNull(integratorValue, "integratorValue must not be null");
-        if (integratorValue.isBlank())
-        {
+        if (integratorValue.isBlank()) {
             throw new IllegalArgumentException("integratorValue must not be blank");
         }
 
@@ -174,7 +166,6 @@ public final class SimulationViewCore
         });
 
         final double initialDaysPerSecond = controls.simulatedSecondsPerRealSecond() / SECONDS_PER_DAY;
-
         timeRateSlider = new Slider(MIN_TIME_RATE_DAYS_PER_SECOND, MAX_TIME_RATE_DAYS_PER_SECOND, initialDaysPerSecond);
         timeRateSlider.setPrefWidth(TIME_RATE_SLIDER_WIDTH_PIXELS);
         timeRateSlider.valueProperty().addListener((observable, oldValue, newValue) ->
@@ -200,9 +191,8 @@ public final class SimulationViewCore
     }
 
     /**
-     * Configures the presentation time-rate range and selected value in simulated seconds per real
-     * second. The selected value is applied through the existing slider listener, so the controller
-     * remains the owner of the actual presentation rate.
+     * Configures the presentation time-rate range and selected value in simulated seconds per real second.
+     * The selected value is applied through the existing slider listener, so the controller remains the owner of the actual presentation rate.
      *
      * @param minimumSimulatedSecondsPerRealSecond lower slider bound; positive and finite
      * @param maximumSimulatedSecondsPerRealSecond upper slider bound; finite and not below minimum
@@ -214,18 +204,14 @@ public final class SimulationViewCore
             final double maximumSimulatedSecondsPerRealSecond,
             final double selectedSimulatedSecondsPerRealSecond)
     {
-        if (!Double.isFinite(minimumSimulatedSecondsPerRealSecond)
-                || minimumSimulatedSecondsPerRealSecond <= 0.0)
+        if (!Double.isFinite(minimumSimulatedSecondsPerRealSecond) || minimumSimulatedSecondsPerRealSecond <= 0.0)
         {
-            throw new IllegalArgumentException(
-                    "minimum simulated seconds per real second must be positive and finite");
+            throw new IllegalArgumentException("minimum simulated seconds per real second must be positive and finite");
         }
-        if (!Double.isFinite(maximumSimulatedSecondsPerRealSecond)
-                || maximumSimulatedSecondsPerRealSecond
+        if (!Double.isFinite(maximumSimulatedSecondsPerRealSecond) || maximumSimulatedSecondsPerRealSecond
                 < minimumSimulatedSecondsPerRealSecond)
         {
-            throw new IllegalArgumentException(
-                    "maximum simulated seconds per real second must be finite and not below minimum");
+            throw new IllegalArgumentException("maximum simulated seconds per real second must be finite and not below minimum");
         }
         if (!Double.isFinite(selectedSimulatedSecondsPerRealSecond)
                 || selectedSimulatedSecondsPerRealSecond
@@ -233,17 +219,12 @@ public final class SimulationViewCore
                 || selectedSimulatedSecondsPerRealSecond
                 > maximumSimulatedSecondsPerRealSecond)
         {
-            throw new IllegalArgumentException(
-                    "selected simulated seconds per real second must be within the configured range");
+            throw new IllegalArgumentException("selected simulated seconds per real second must be within the configured range");
         }
 
-        final double minimumDaysPerSecond =
-                minimumSimulatedSecondsPerRealSecond / SECONDS_PER_DAY;
-        final double maximumDaysPerSecond =
-                maximumSimulatedSecondsPerRealSecond / SECONDS_PER_DAY;
-        final double selectedDaysPerSecond =
-                selectedSimulatedSecondsPerRealSecond / SECONDS_PER_DAY;
-
+        final double minimumDaysPerSecond = minimumSimulatedSecondsPerRealSecond / SECONDS_PER_DAY;
+        final double maximumDaysPerSecond = maximumSimulatedSecondsPerRealSecond / SECONDS_PER_DAY;
+        final double selectedDaysPerSecond = selectedSimulatedSecondsPerRealSecond / SECONDS_PER_DAY;
         timeRateSlider.setMin(minimumDaysPerSecond);
         timeRateSlider.setMax(maximumDaysPerSecond);
         timeRateSlider.setValue(selectedDaysPerSecond);
@@ -268,16 +249,13 @@ public final class SimulationViewCore
 
                 final long elapsedNanos = now - previousFrameNanos;
                 previousFrameNanos = now;
-                if (elapsedNanos <= 0L)
-                {
+                if (elapsedNanos <= 0L) {
                     return;
                 }
 
                 final double elapsedWallClockSeconds = elapsedNanos / NANOS_PER_SECOND;
                 final double boundedWallClockSeconds = Math.min(elapsedWallClockSeconds, MAX_FRAME_DELTA_SECONDS);
-
-                final boolean wasRunning =
-                        controls.state() == ScenarioLifecycleState.RUNNING;
+                final boolean wasRunning = controls.state() == ScenarioLifecycleState.RUNNING;
 
                 if (wasRunning)
                 {
@@ -286,10 +264,7 @@ public final class SimulationViewCore
 
                     if (secondaryTrail.isPresent())
                     {
-                        recordTrail(
-                                before,
-                                secondaryTrail.orElseThrow(),
-                                secondaryTrailPosition.orElseThrow());
+                        recordTrail(before, secondaryTrail.orElseThrow(), secondaryTrailPosition.orElseThrow());
                     }
                 }
 
@@ -303,10 +278,7 @@ public final class SimulationViewCore
 
                     if (secondaryTrail.isPresent())
                     {
-                        recordTrail(
-                                snapshot,
-                                secondaryTrail.orElseThrow(),
-                                secondaryTrailPosition.orElseThrow());
+                        recordTrail(snapshot, secondaryTrail.orElseThrow(), secondaryTrailPosition.orElseThrow());
                     }
                 }
 
@@ -317,8 +289,7 @@ public final class SimulationViewCore
     }
 
     /** The elapsed-time readout label, wired and updated by the core, for a screen to place. */
-    public Label elapsedLabel()
-    {
+    public Label elapsedLabel() {
         return elapsedLabel;
     }
 
@@ -384,11 +355,7 @@ public final class SimulationViewCore
 
         if (secondaryTrail.isEmpty())
         {
-            renderer.render(
-                    graphics,
-                    snapshot,
-                    frameTransform,
-                    trail.points());
+            renderer.render(graphics, snapshot, frameTransform, trail.points());
             return;
         }
 
@@ -454,12 +421,9 @@ public final class SimulationViewCore
      * @param newTransformProvider maps each committed snapshot to its frame transform; never null and
      *                             must never return null
      */
-    public void setTransformProvider(
-            final Function<SimulationSnapshot, ViewTransform> newTransformProvider)
+    public void setTransformProvider(final Function<SimulationSnapshot, ViewTransform> newTransformProvider)
     {
-        this.transformProvider = Objects.requireNonNull(
-                newTransformProvider,
-                "newTransformProvider must not be null");
+        this.transformProvider = Objects.requireNonNull(newTransformProvider,"newTransformProvider must not be null");
     }
 
     /**
@@ -491,17 +455,13 @@ public final class SimulationViewCore
     }
 
     /** The status readout label, wired and updated (text and colour) by the core, for a screen to place. */
-    public Label statusLabel()
-    {
+    public Label statusLabel() {
         return stateLabel;
     }
 
-    private String statusTextFor(
-            final ScenarioLifecycleState state,
-            final Optional<ScenarioTerminationReason> reason)
+    private String statusTextFor(final ScenarioLifecycleState state, final Optional<ScenarioTerminationReason> reason)
     {
-        if (reason.isEmpty())
-        {
+        if (reason.isEmpty()) {
             return statusWordFor(state);
         }
         return statusWordFor(state) + " — " + terminationText.apply(reason.get());
@@ -542,20 +502,17 @@ public final class SimulationViewCore
     }
 
     /**
-     * Resolves the transform for one committed snapshot. A configured provider is evaluated once per
-     * rendered frame; otherwise the current fixed transform is used.
+     * Resolves the transform for one committed snapshot. A configured provider is evaluated once per rendered frame.
+     * Otherwise the current fixed transform is used.
      *
      * @param snapshot committed state about to be rendered; never null
      * @return the non-null transform for this frame
      */
     private ViewTransform transformFor(final SimulationSnapshot snapshot)
     {
-        if (transformProvider == null)
-        {
+        if (transformProvider == null) {
             return transform;
         }
-        return Objects.requireNonNull(
-                transformProvider.apply(snapshot),
-                "transform provider must not return null");
+        return Objects.requireNonNull(transformProvider.apply(snapshot),"transform provider must not return null");
     }
 }
