@@ -19,7 +19,7 @@ import java.util.function.Supplier;
 /**
  * JavaFX entry point and host for the orbital mechanics simulator.
  * <p>
- * The host owns the window shell, persistent level navigation and the minimal cross-level state needed for the L0-to-L2 learning progression.
+ * The host owns the window shell, persistent level navigation and the minimal cross-level state needed for learning progression.
  *
  * @author Eugeniu PLATITA
  */
