@@ -3,11 +3,7 @@
 **Status:** Accepted  
 **Date:** 15.07.2026  
 **Modules:** all  
-**Related:** Project Proposal §3.6 (Core Technologies), §2.1 (System Architecture); Objective 2 (simulation engine), Objective 4 (NASA NeoWs integration)
 
-*Recorded retrospectively at the point the decision record was established; the
-decisions themselves were taken during project initiation (Phase 1) and are
-reflected in the initial repository commits.*
 
 ---
 

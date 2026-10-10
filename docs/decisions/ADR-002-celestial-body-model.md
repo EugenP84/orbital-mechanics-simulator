@@ -3,47 +3,39 @@
 **Status:** Accepted  
 **Date:** 25.07.2026  
 **Modules:** simulator-core (model, math), simulator-data (nasa)  
-**Related:** Project Proposal §2.2 (Simulation Engine), §3.5 (Design Patterns); Objective 6 (Numerical Integrator Comparison)
-
----
 
 ## Context
 
-The simulation engine must represent several kinds of celestial bodies —
-including stars, planets and asteroids (including real Near-Earth Objects
-imported from NASA's NeoWs API) — while supporting both accurate numerical
-simulation and future extensibility.
+The simulation engine must represent stars, planets and asteroids, including
+real near-Earth objects (NEOs) imported from NASA's NeoWs API.
 
-The project proposal identified the Factory pattern as the mechanism for
-creating celestial bodies. During detailed design, the domain model needed to
-satisfy the following requirements:
+The project proposal named the Factory pattern as the mechanism for creating
+celestial bodies. During detailed design, the domain model had to meet these
+requirements:
 
-1. Uniform treatment of all bodies by the physics engine. Newtonian gravity
-   depends only on physical properties (mass, position, velocity and
-   separation), not on astronomical classification.
-2. Loading real NEO catalogue data and close-approach information from the
-   NASA NeoWs API.
-3. Head-to-head comparison of multiple numerical integration algorithms
-   (Euler, Velocity Verlet and RK4) from identical initial conditions
-   (Objective 6).
-4. Support for simulation reset, save/load persistence and scenario replay.
-5. Clear separation between the simulation core and external data sources.
-6. Future extensibility with additional body classifications (e.g. moons,
-   comets and spacecraft) without introducing unnecessary structural
-   complexity.
+1. The physics engine treats all bodies uniformly. Newtonian gravity depends
+   only on physical properties (mass, position, velocity and separation), so
+   astronomical classification does not affect it.
+2. Real NEO catalogue data and close-approach information can be loaded from
+   the NASA NeoWs API.
+3. Euler, Velocity Verlet and RK4 can be compared from identical initial
+   conditions (Objective 6).
+4. Simulation reset, save/load persistence and scenario replay are supported.
+5. The simulation core is separated from external data sources.
+6. Further body classifications (e.g. moons, comets and spacecraft) can be
+   added later with little structural change.
 
 ## Decision Drivers
 
-- Model the physics domain rather than the external data source.
+- Model the physics domain, not the external data source.
 - Avoid speculative inheritance.
 - Support reproducible integrator comparison.
-- Maintain clear module boundaries.
+- Keep NeoWs-specific types out of simulator-core.
 - Preserve stable runtime references for rendering and observers.
-- Keep the design simple while allowing future extension.
 
 ## Options Considered
 
-### Option A — Full inheritance hierarchy
+### Option A: Full inheritance hierarchy
 
 ```
 abstract CelestialBody
@@ -52,19 +44,12 @@ abstract CelestialBody
  └── Asteroid
 ```
 
-**Rejected.**
+Rejected. All subclasses would hold identical state and take part in the
+simulation identically. They would add no specialised behaviour and would
+exist only for classification, at the cost of extra structure. Making the
+Factory pattern visible in the design does not justify the hierarchy.
 
-All subclasses would contain identical state and participate in the simulation
-identically. They would introduce no specialised behaviour and would exist
-purely for classification.
-
-This is inheritance for taxonomy rather than polymorphism. It increases
-structural complexity without providing meaningful behavioural variation.
-
-The visibility of the Factory pattern alone is not sufficient justification.
-Design patterns should support the domain model rather than dictate it.
-
-### Option B — Single class with NEO subclass
+### Option B: Single class with NEO subclass
 
 ```
 CelestialBody
@@ -73,25 +58,18 @@ CelestialBody
 NearEarthObject
 ```
 
-`NearEarthObject` would extend `CelestialBody` by adding NASA-specific
-metadata (NeoWs identifier, estimated diameter, close-approach information,
-etc.).
+`NearEarthObject` would extend `CelestialBody` with NASA-specific metadata
+(NeoWs identifier, estimated diameter and close-approach information).
 
-**Rejected.**
-
-The inheritance would be driven by external catalogue metadata rather than
-different simulation behaviour.
-
-Furthermore, close-approach information represents an **event** rather than a
-permanent property of the object. A single asteroid may have many recorded
-close approaches. Embedding such information directly within the simulation
-entity would incorrectly model a one-to-many relationship as object state.
-
-This approach would also couple the physics model to NeoWs-specific concepts,
-violating the architectural separation between simulator-core and
+Rejected. The inheritance would be driven by external catalogue metadata
+while simulation behaviour stayed identical. Close-approach information also
+describes an event: one asteroid may have many recorded close approaches, so
+embedding them in the simulation entity would model a one-to-many
+relationship as object state. The subclass would couple the physics model to
+NeoWs-specific concepts and break the separation between simulator-core and
 simulator-data.
 
-### Option C — Fully immutable simulation objects
+### Option C: Fully immutable simulation objects
 
 ```
 CelestialBody (record, carrying its own state)
@@ -99,133 +77,96 @@ CelestialBody (record, carrying its own state)
 Integrator:  Current Bodies ──▶ New Bodies (complete replacement per step)
 ```
 
-Each simulation step would create an entirely new collection of celestial
-bodies using immutable records and `withState()` copy methods.
+Each simulation step would create a new collection of celestial bodies using
+immutable records and `withState()` copy methods.
 
-**Rejected (viable but not preferred).**
+Rejected, although viable. The simulation uses the Observer pattern, and
+components such as the renderer and the hint engine keep references to
+simulation objects throughout execution. Replacing every body instance on
+every integration step would force observers to re-resolve object identity
+continually. Stable runtime objects with replaceable immutable state
+snapshots are simpler for the current architecture.
 
-This design is conceptually elegant and works well for functional
-architectures.
+### Option D: Composition with definition–state separation (chosen)
 
-However, the simulation uses the Observer pattern. Components such as the
-renderer and educational hint engine retain references to simulation objects
-throughout execution.
-
-Replacing every body instance on every integration step would complicate
-observer management by requiring continual re-resolution of object identity.
-
-Maintaining stable runtime objects while replacing immutable state snapshots
-provides a simpler solution for the current architecture.
-
-### Option D — Composition with definition–state separation (Chosen)
-
-| Type                         | Module | Responsibility |
-|------------------------------|---|---|
-| `CelestialBody` (record)     | core/model | Immutable identity and physical properties (id, name, type, mass, radius) |
-| `CelestialBodyType` (enum)   | core/model | Classification (`STAR`, `PLANET`, `ASTEROID`) |
-| `StateVector` (record)       | core/math | Immutable simulation state (position, velocity) |
-| `SimulationBody`             | core/model | Mutable runtime entity associating a `CelestialBody` with its current `StateVector` |
-| `CelestialBodyFactory`       | core/model | Validation, default values and construction of valid core-domain objects |
-| `NeoMetadata` (record)       | data/nasa | NASA catalogue metadata describing the object itself |
-| `CloseApproach` (record)     | data/nasa | One recorded close-approach event |
+| Type | Module | Responsibility |
+|---|---|---|
+| `CelestialBody` (record) | core/model | Immutable identity and physical properties (id, name, type, mass, radius) |
+| `CelestialBodyType` (enum) | core/model | Classification (`STAR`, `PLANET`, `ASTEROID`) |
+| `StateVector` (record) | core/math | Immutable simulation state (position, velocity) |
+| `SimulationBody` | core/model | Mutable runtime entity associating a `CelestialBody` with its current `StateVector` |
+| `CelestialBodyFactory` | core/model | Validation, default values and construction of valid core-domain objects |
+| `NeoMetadata` (record) | data/nasa | NASA catalogue metadata describing the object itself |
+| `CloseApproach` (record) | data/nasa | One recorded close-approach event |
 | `NeoCatalogueEntry` (record) | data/nasa | NASA DTO containing metadata and close-approach history |
-| `NeoBodyMapper`              | data/nasa | Maps NASA DTOs into source-independent core creation requests |
+| `NeoBodyMapper` | data/nasa | Maps NASA DTOs into source-independent core creation requests |
 
-The data layer converts `NeoCatalogueEntry` instances into neutral core-domain
-creation requests before invoking the factory. Consequently, simulator-core
-remains completely independent of NeoWs-specific concepts.
+The data layer converts `NeoCatalogueEntry` instances into neutral
+core-domain creation requests before invoking the factory, so simulator-core
+has no dependency on NeoWs-specific concepts.
 
-**Naming note.** The immutable kinematic state record is named `StateVector`
-and resides in `core/math` rather than being introduced as a new `BodyState`
-type in `core/model`. *State vector* is the standard term for a position and
-velocity pair in the astrodynamics literature (Bate, Mueller and White, 1971;
-Curtis, 2024 — Proposal references [21], [22]), and the type is a purely
-kinematic quantity that sits naturally alongside `Vector3D`. Reusing the
-established, tested type avoids churn and keeps the codebase aligned with
-domain vocabulary.
+The kinematic state record is named `StateVector` and is placed in
+`core/math` next to `Vector3D`. "State vector" is the standard astrodynamics
+term for a position and velocity pair.
 
 ## Decision
 
 Adopt Option D.
 
-**Composition over inheritance.** This design follows the GoF principle
-“Favor object composition over class inheritance.” `SimulationBody` combines
-an immutable `CelestialBody` definition with an immutable `StateVector`, while
-NASA-specific metadata remains in separate data-layer types. Inheritance is
-reserved for future cases in which genuinely different behaviour requires
+`SimulationBody` is the stable runtime object. It associates an immutable
+`CelestialBody` definition (permanent physical properties) with a replaceable
+immutable `StateVector` (time-dependent state). This follows the Gang of Four
+principle of favouring object composition over class inheritance. Inheritance
+is reserved for future cases in which different behaviour requires
 polymorphic substitution.
 
-**Classification.** Astronomical classification is represented using the
-`CelestialBodyType` enumeration rather than inheritance because simulation behaviour
-does not currently vary polymorphically.
+Astronomical classification is represented by the `CelestialBodyType`
+enumeration, because simulation behaviour does not currently vary by type.
 
-**Composition.** External catalogue information is modelled separately from
-the simulation domain. NASA-specific metadata and close-approach records
-remain entirely within the simulator-data module. A dedicated mapper
-(`NeoBodyMapper`) translates external representations into source-independent
-core-domain objects, forming an architectural boundary between external APIs
-and the simulation model.
+NASA-specific metadata and close-approach records stay in the simulator-data
+module. `NeoBodyMapper` translates them into source-independent core-domain
+objects and is the boundary between external APIs and the simulation model.
 
-**Definition–state separation.** Permanent physical properties are represented
-by immutable `CelestialBody` records. Time-dependent simulation state is
-represented by immutable `StateVector` records. `SimulationBody` provides the
-stable runtime object used throughout the simulation by associating an
-immutable body definition with a replaceable immutable state snapshot.
+`CelestialBodyFactory` is a Simple Factory. The GoF Factory Method is not
+used, because product behaviour does not vary polymorphically and
+subclass-based instantiation would add nothing. The factory:
 
-**Object creation.** `CelestialBodyFactory` is implemented as a Simple Factory
-rather than the GoF Factory Method. Because product behaviour does not vary
-polymorphically, subclass-based instantiation would introduce unnecessary
-complexity. The factory is responsible for:
+- validates physical properties;
+- applies default values;
+- enforces canonical units;
+- generates identifiers where appropriate;
+- constructs valid core-domain objects.
 
-- validating physical properties;
-- applying default values;
-- enforcing canonical units;
-- generating identifiers where appropriate; and
-- constructing valid core-domain objects.
+External data mapping is performed in the data layer, outside the factory.
 
-External data mapping remains outside the factory and is performed within the
-data layer.
-
-**Simulation updates.** Numerical integrators operate on a consistent snapshot
-of the current simulation state. Each integration step computes the complete
-collection of next states before any runtime object is updated. Only after all
-calculations complete does the simulation engine replace each body's immutable
-`StateVector`, preventing mixed-timestep updates.
+Numerical integrators operate on a consistent snapshot of the current
+simulation state. Each integration step computes all next states before any
+runtime object is updated. Only then does the simulation engine replace each
+body's `StateVector`, which prevents mixed-timestep updates.
 
 ## Consequences
 
 ### Positive
 
-- Integrator comparison (Objective 6) can reuse identical immutable body
-  definitions while supplying fresh initial states, simplifying repeatable
-  experiments.
-- Reset, replay and save/load operations become straightforward because
-  immutable definitions are separated from changing simulation state.
-- Renderer and observer components retain stable `SimulationBody` references
+- Integrator comparison (Objective 6) can reuse identical body definitions
+  with fresh initial states, which makes experiments repeatable.
+- Reset, replay and save/load are simpler because immutable definitions are
+  separated from changing simulation state.
+- Renderer and observer components keep stable `SimulationBody` references
   throughout a simulation run.
-- State updates replace complete immutable snapshots rather than mutating
-  vector components individually, reducing the risk of inconsistent
-  intermediate state.
-- simulator-core remains independent of external data-source concepts.
-- Supporting additional catalogue providers (e.g. ESA) requires changes only
+- State updates replace complete immutable snapshots, so no vector component
+  is mutated individually and inconsistent intermediate state is less likely.
+- Supporting another catalogue provider (e.g. ESA) requires changes only
   within simulator-data.
-- Additional passive body classifications (e.g. moons or comets) can be
-  introduced without creating unnecessary subclasses.
+- Further passive body classifications (e.g. moons or comets) can be
+  introduced without new subclasses.
 
 ### Negative / Accepted Trade-offs
 
-- The model contains more classes than a single mutable entity, increasing
-  initial structural complexity.
+- The model contains more classes than a single mutable entity.
 - Simulation updates require a two-phase process (calculate all next states,
   then commit all updates). This contract will be made explicit in the
   `Integrator` interface documentation.
 - Actively controlled entities (e.g. spacecraft with propulsion or manoeuvre
-  logic) may eventually require a different behavioural abstraction if their
-  simulation behaviour diverges significantly from passive gravitational
-  bodies.
-
-## Guiding Principle
-
-Use inheritance when behaviour varies polymorphically; use an enumeration for
-classification; use composition for optional metadata; and separate immutable
-physical identity from time-dependent simulation state.
+  logic) may later need a different behavioural abstraction if their
+  simulation behaviour diverges from that of passive gravitational bodies.

@@ -3,7 +3,6 @@
 **Status:** Accepted  
 **Date:** 07.08.2026  
 **Modules:** simulator-core (physics, math)  
-**Related:** Project Proposal §2.2 (Simulation Engine); Objective 2 (integration methods), Objective 6 (energy conservation, trajectory accuracy, NEO validation); ADR-002 (definition–state separation)
 
 ---
 
@@ -30,7 +29,7 @@ and trajectory accuracy, and to validation of simulated NEO close-approach
 predictions against published NASA CNEOS data. These commitments constrain
 both answers.
 
-This decision continues the trail established by ADR-002. ADR-002 separated
+This decision continues the trail established by ADR-002 which separated
 immutable body definitions from replaceable state snapshots specifically to
 support reproducible integrator experiments; ADR-003 establishes the physical
 law that those state transitions approximate.
@@ -136,7 +135,7 @@ The computed acceleration is additionally verified to be finite before being
 returned, since finite inputs at sufficiently small separations can still
 overflow.
 
-This validation is deliberately located at the physics boundary rather than in
+This validation is located at the physics boundary and not in
 `Vector3D`. `Vector3D` accepts any `double` without constructor validation
 because vectors are constructed several times per body per simulation step,
 making per-construction finiteness checks a recurring cost for a guarantee
@@ -150,9 +149,6 @@ are distinct responsibilities and are implemented as separate components
 Derived orbital quantities required by the learning scenarios and hint system
 (circular-orbit velocity, escape velocity, surface gravity) will be located
 when that requirement is reached, rather than being placed speculatively.
-
-**Collision handling.** Collisions are represented using the physical radii of
-bodies and detected by the simulation engine, not by the gravitational model.
 
 ## Consequences
 
@@ -173,7 +169,7 @@ bodies and detected by the simulation engine, not by the gravitational model.
   arguments, making it straightforward to test against known physical values.
 - The gravitational model does not return non-finite accelerations, preventing it from becoming a source of NaN or infinite values propagated through the simulation state.
 
-### Negative / Accepted Trade-offs
+### Accepted Trade-offs
 
 - **Close-encounter fidelity is bounded by the timestep.** Collision detection
   operates within a discrete numerical simulation: a sufficiently large
