@@ -89,14 +89,12 @@ public final class HorizonsExperimentLoader
         {
             if (input == null)
             {
-                throw new HorizonsDataFormatException(
-                        "Horizons fixture resource not found: " + resourcePath);
+                throw new HorizonsDataFormatException("Horizons fixture resource not found: " + resourcePath);
             }
             return new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }
         catch (IOException cause) {
-            throw new HorizonsDataFormatException(
-                    "Failed to read Horizons fixture: " + resourcePath, cause);
+            throw new HorizonsDataFormatException("Failed to read Horizons fixture: " + resourcePath, cause);
         }
     }//-------- end of loadResource() ---------------------------------------
 

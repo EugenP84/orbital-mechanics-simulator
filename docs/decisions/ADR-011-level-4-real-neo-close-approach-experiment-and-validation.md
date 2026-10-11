@@ -3,7 +3,6 @@
 **Status:** Accepted  
 **Date:** 17.09.2026    
 **Modules:** `simulator-data`, `simulator-learning`, `simulator-app`, `simulator-evaluation`; existing facilities in `simulator-core` reused unchanged unless calibration demonstrates a genuine requirement  
-**Related:** Project Proposal Objectives 2, 3, 4, 6 and 7; ADR-004 (N-body acceleration and restricted interaction policy); ADR-006 (simulation engine execution model); ADR-007 (external NEO data acquisition and trust boundary); ADR-008 (learning scenario architecture and evaluation cadence); ADR-010 (JavaFX scenario host/screen architecture)
 
 ---
 

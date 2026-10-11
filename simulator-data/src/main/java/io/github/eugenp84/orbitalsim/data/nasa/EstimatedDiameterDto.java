@@ -5,6 +5,8 @@ import com.google.gson.annotations.SerializedName;
 /**
  * Estimated-diameter block. The feed provides four unit systems; the parser reads {@link #meters} directly, avoiding a conversion (ADR-007 §4).
  * Package-private to the NASA adapter (ADR-007 §3). Diameter values are JSON numbers, unlike the string-typed velocity and distance fields elsewhere in this response.
+ *
+ * @author Eugeniu PLATITA
  */
 final class EstimatedDiameterDto
 {

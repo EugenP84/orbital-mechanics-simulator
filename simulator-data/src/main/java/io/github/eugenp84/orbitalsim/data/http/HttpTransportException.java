@@ -8,6 +8,8 @@ package io.github.eugenp84.orbitalsim.data.http;
  * a 429 or 500 is a {@link HttpResponseData} the server chose to send, whereas
  * this exception means the exchange never produced a response at all.
  * A caller classifies the two differently (ADR-007 §5): both may be acquisition failures, but they arrive by different routes.
+ *
+ * @author Eugeniu PLATITA
  */
 public class HttpTransportException extends RuntimeException
 {

@@ -1,7 +1,6 @@
 package io.github.eugenp84.orbitalsim.data.nasa;
 
 import com.google.gson.annotations.SerializedName;
-
 import java.util.List;
 
 /** One NEO in the feed. Package-private to the NASA adapter (ADR-007 §3). */

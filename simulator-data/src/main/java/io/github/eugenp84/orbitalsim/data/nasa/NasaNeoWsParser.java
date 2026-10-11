@@ -10,18 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Parses a NeoWs {@code /feed} JSON body into provider-neutral
- * {@link NeoObjectData} values (ADR-007 §4).
+ * Parses a NeoWs {@code /feed} JSON body into provider-neutral {@link NeoObjectData} values.
  * <p>
- * This is the single parsing path shared by live and cached data (ADR-007 §7):
- * it operates on a JSON string, whatever its origin. It performs the SI conversions the provider-neutral model requires — kilometres to metres,
- * kilometres-per-second to metres-per-second, Unix milliseconds to {@link Instant} — and reads the diameter directly from the metres block.
- * <p>
- * <strong>Failure classification (ADR-007 §5).</strong> A body that is not valid JSON, or is valid JSON that does not match the expected feed structure
- * (a missing required field, a null where a value is required, or a numeric string that is not a number), is an <em>external representation failure</em>
- * and is signalled as {@link NeoDataFormatException}. This is distinct from an internal defect, which would surface as an ordinary unchecked exception.
- * The caller (the provider) decides fallback eligibility from the exception type;
- * the parser's job is only to classify correctly.
+ * @author Eugeniu PLATITA
  */
 public final class NasaNeoWsParser {
 
@@ -34,8 +25,7 @@ public final class NasaNeoWsParser {
      *
      * @param json the raw JSON body, from a live response or a cached resource
      * @return the objects contained in the feed, flattened across all dates
-     * @throws NeoDataFormatException if the body is not a well-formed feed
-     *         response (an external representation failure, ADR-007 §5)
+     * @throws NeoDataFormatException if the body is not a well-formed feed response (an external representation failure)
      */
     public List<NeoObjectData> parseFeed(String json)
     {
@@ -56,8 +46,7 @@ public final class NasaNeoWsParser {
 
         if (feed == null || feed.nearEarthObjects == null)
         {
-            throw new NeoDataFormatException(
-                    "feed body did not contain near_earth_objects");
+            throw new NeoDataFormatException("feed body did not contain near_earth_objects");
         }
 
         List<NeoObjectData> objects = new ArrayList<>();
@@ -102,11 +91,8 @@ public final class NasaNeoWsParser {
                     neo.isPotentiallyHazardousAsteroid,
                     approaches);
         } catch (IllegalArgumentException e) {
-            // The provider-neutral contract rejected NASA's values (e.g. a
-            // non-positive diameter). That is an external data-quality failure,
-            // not our defect (ADR-007 §5).
-            throw new NeoDataFormatException(
-                    "NEO " + neo.id + " failed provider-neutral validation: " + e.getMessage(), e);
+            // The provider-neutral contract rejected NASA's values (e.g. non-positive diameter).
+            throw new NeoDataFormatException("NEO " + neo.id + " failed provider-neutral validation: " + e.getMessage(), e);
         }
     }
 
@@ -122,8 +108,7 @@ public final class NasaNeoWsParser {
                 "miss_distance.kilometers missing");
         require(ca.orbitingBody != null, "orbiting_body missing");
 
-        double kmPerSecond = parseNumber(
-                ca.relativeVelocity.kilometersPerSecond, "relative_velocity.kilometers_per_second");
+        double kmPerSecond = parseNumber(ca.relativeVelocity.kilometersPerSecond, "relative_velocity.kilometers_per_second");
         double km = parseNumber(ca.missDistance.kilometers, "miss_distance.kilometers");
 
         try {
@@ -133,8 +118,7 @@ public final class NasaNeoWsParser {
                     kmPerSecond * METRES_PER_KILOMETRE,
                     ca.orbitingBody);
         } catch (IllegalArgumentException e) {
-            throw new NeoDataFormatException(
-                    "close approach failed provider-neutral validation: " + e.getMessage(), e);
+            throw new NeoDataFormatException("close approach failed provider-neutral validation: " + e.getMessage(), e);
         }
     }
 
@@ -143,8 +127,7 @@ public final class NasaNeoWsParser {
         try {
             return Double.parseDouble(value);
         } catch (NumberFormatException e) {
-            throw new NeoDataFormatException(
-                    field + " was not a number: \"" + value + "\"", e);
+            throw new NeoDataFormatException(field + " was not a number: \"" + value + "\"", e);
         }
     }
 

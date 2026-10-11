@@ -6,6 +6,8 @@ package io.github.eugenp84.orbitalsim.data.http;
  *
  * @param statusCode the HTTP status code
  * @param body       the response body; may be empty but never null
+ *
+ * @author Eugeniu PLATITA
  */
 public record HttpResponseData(int statusCode, String body)
 {
