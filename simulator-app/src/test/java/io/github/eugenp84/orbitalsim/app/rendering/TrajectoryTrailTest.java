@@ -3,17 +3,13 @@ package io.github.eugenp84.orbitalsim.app.rendering;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.github.eugenp84.orbitalsim.core.math.Vector3D;
-
 import java.util.ArrayList;
 import java.util.List;
-
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link TrajectoryTrail}. The trail carries no JavaFX dependency, so these run
- * without a JavaFX toolkit.
+ * Unit tests for {@link TrajectoryTrail}. The trail carries no JavaFX dependency, so these run without a JavaFX toolkit.
  *
  * @author Eugeniu PLATITA
  */

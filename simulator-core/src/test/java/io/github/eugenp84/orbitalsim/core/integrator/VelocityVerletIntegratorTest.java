@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class VelocityVerletIntegratorTest {
@@ -34,16 +33,14 @@ class VelocityVerletIntegratorTest {
     }
 
     private static void assertVectorEquals(Vector3D expected, Vector3D actual, double scale) {
-        // An absolute floor keeps the tolerance meaningful when the expected
-        // magnitude is at or near zero, while remaining relative for large
-        // quantities.
+        // An absolute floor keeps the tolerance meaningful when the expected magnitude is at or near zero, while remaining relative for large quantities.
         double tolerance = Math.max(1.0, Math.abs(scale)) * RELATIVE_TOLERANCE;
         assertEquals(expected.x(), actual.x(), tolerance, "x component");
         assertEquals(expected.y(), actual.y(), tolerance, "y component");
         assertEquals(expected.z(), actual.z(), tolerance, "z component");
     }
 
-    // --- Algorithm correctness ---
+    // ---------------------------- Algorithm correctness ---=============================
 
     @Test
     void advancesStateAccordingToVelocityVerlet() {
@@ -52,17 +49,10 @@ class VelocityVerletIntegratorTest {
         //   v_half = v + ½·a·dt = (10,0,0) + (0,-10,0) = (10, -10, 0)
         //   r_next = r + v_half·dt = (0,100,0) + (20,-20,0) = (20, 80, 0)
         //   v_next = v_half + ½·a·dt = (10,-10,0) + (0,-10,0) = (10, -20, 0)
-        //
-        // Contrast with Forward Euler on identical inputs, which gives
-        // r_next = (20, 100, 0): the y-position is unchanged there because
-        // Euler advances position with the old velocity. Verlet uses the
-        // half-step velocity and therefore registers the acceleration within
-        // the same step. The velocities agree; only the positions differ.
         StateVector[] input = {
                 new StateVector(new Vector3D(0, 100, 0), new Vector3D(10, 0, 0))};
 
-        StateVector[] result = integrator.step(
-                input, 2.0, constant(new Vector3D(0, -10, 0)));
+        StateVector[] result = integrator.step(input, 2.0, constant(new Vector3D(0, -10, 0)));
 
         assertEquals(new Vector3D(20, 80, 0), result[0].position());
         assertEquals(new Vector3D(10, -20, 0), result[0].velocity());
@@ -70,17 +60,15 @@ class VelocityVerletIntegratorTest {
 
     @Test
     void reproducesAnalyticalSolutionUnderConstantAcceleration() {
-        // Velocity Verlet has no local truncation error when acceleration is
-        // constant: the update is algebraically identical to
+        // Velocity Verlet has no local truncation error when acceleration is constant: the update is algebraically identical to
         //   r = r₀ + v₀·t + ½·a·t²      v = v₀ + a·t
-        // A tolerance is still used because floating-point rounding remains.
+        // !!!!!!! A tolerance is still used because floating-point rounding remains!!!!!!!!!!!!!
         Vector3D r0 = new Vector3D(5, -3, 11);
         Vector3D v0 = new Vector3D(2, 7, -4);
         Vector3D a = new Vector3D(-1, 0.5, 3);
         double dt = 4.0;
 
-        StateVector[] result = integrator.step(
-                new StateVector[]{new StateVector(r0, v0)}, dt, constant(a));
+        StateVector[] result = integrator.step(new StateVector[]{new StateVector(r0, v0)}, dt, constant(a));
 
         Vector3D expectedPosition = r0
                 .add(v0.multiply(dt))
@@ -97,8 +85,7 @@ class VelocityVerletIntegratorTest {
         Vector3D velocity = new Vector3D(10, -20, 30);
         double dt = 5.0;
 
-        StateVector[] result = integrator.step(
-                new StateVector[]{new StateVector(position, velocity)}, dt, zero());
+        StateVector[] result = integrator.step(new StateVector[]{new StateVector(position, velocity)}, dt, zero());
 
         assertEquals(position.add(velocity.multiply(dt)), result[0].position());
         assertEquals(velocity, result[0].velocity());
@@ -121,9 +108,8 @@ class VelocityVerletIntegratorTest {
     @Test
     void evaluatesTheAccelerationModelTwicePerStep() {
         // Two evaluations per step under the current stateless step signature.
-        // An implementation characteristic, not part of the Integrator
-        // contract; it is the comparison baseline for Objective 6 alongside
-        // Forward Euler's single evaluation.
+        // An implementation characteristic, not part of the Integrator contract;
+        // it is the comparison baseline for Objective 6 alongside Forward Euler's single evaluation.
         AtomicInteger evaluations = new AtomicInteger();
 
         AccelerationModel counting = states -> {
@@ -143,8 +129,8 @@ class VelocityVerletIntegratorTest {
     @Test
     void secondEvaluationOccursAtTheUpdatedPositions() {
         // The property Forward Euler could not exercise: the model is queried
-        // at a trial state that is not the committed state of any body
-        // (ADR-004). The first evaluation sees r(t); the second sees r(t + Δt).
+        // at a trial state that is not the committed state of any body.
+        // The first evaluation sees r(t); the second sees r(t + Δt).
         List<Vector3D[]> observedPositions = new ArrayList<>();
 
         Vector3D acceleration = new Vector3D(0, -10, 0);
@@ -166,26 +152,15 @@ class VelocityVerletIntegratorTest {
         StateVector[] result = integrator.step(input, 2.0, recording);
 
         assertEquals(2, observedPositions.size());
-        assertEquals(new Vector3D(0, 100, 0), observedPositions.get(0)[0],
-                "first evaluation must see the current position");
-        assertEquals(new Vector3D(20, 80, 0), observedPositions.get(1)[0],
-                "second evaluation must see the updated position");
-        assertEquals(observedPositions.get(1)[0], result[0].position(),
-                "the position evaluated second is the position returned");
+        assertEquals(new Vector3D(0, 100, 0), observedPositions.get(0)[0],"first evaluation must see the current position");
+        assertEquals(new Vector3D(20, 80, 0), observedPositions.get(1)[0],"second evaluation must see the updated position");
+        assertEquals(observedPositions.get(1)[0], result[0].position(),"the position evaluated second is the position returned");
     }
 
     @Test
     void trialStateCarriesTheHalfStepVelocity() {
         // Design-characterisation test, not an algorithm-correctness test.
-        // A conforming AccelerationModel ignores velocity (ADR-005 §4), so
-        // supplying Vector3D.ZERO here would leave the integrator
-        // mathematically correct and this test would fail. It exists because
-        // the half-step velocity was deliberately chosen and documented; a
-        // maintainer changing that choice should update this test rather than
-        // assume a defect.
-        //
-        // Note the trial state is not a simultaneous snapshot: its position is
-        // at t + Δt while its velocity is at t + Δt/2.
+        // The trial state is not a simultaneous snapshot: its position is at t + Δt while its velocity is at t + Δt/2.
         List<Vector3D> observedVelocities = new ArrayList<>();
 
         AccelerationModel recording = states -> {
@@ -298,8 +273,7 @@ class VelocityVerletIntegratorTest {
 
     @Test
     void malformedAccelerationResultIsRejectedOnTheSecondEvaluation() {
-        // The second evaluation is validated as thoroughly as the first: a
-        // model conforming initially and failing later must still be caught
+        // The second evaluation is validated as thoroughly as the first: a model conforming initially and failing later must still be caught
         StateVector[] states = {
                 new StateVector(Vector3D.ZERO, new Vector3D(1, 0, 0))};
 
@@ -316,10 +290,8 @@ class VelocityVerletIntegratorTest {
 
     @Test
     void failureOnTheSecondEvaluationLeavesInputUnchanged() {
-        // Multi-stage methods must still satisfy the two-phase contract: a
-        // step that throws part-way through has committed nothing
-        StateVector original = new StateVector(
-                new Vector3D(0, 100, 0), new Vector3D(10, 0, 0));
+        // Multi-stage methods must still satisfy the two-phase contract: a step that throws part-way through has committed nothing
+        StateVector original = new StateVector(new Vector3D(0, 100, 0), new Vector3D(10, 0, 0));
         StateVector[] input = {original};
 
         AtomicInteger calls = new AtomicInteger();
@@ -336,7 +308,7 @@ class VelocityVerletIntegratorTest {
         assertEquals(new Vector3D(10, 0, 0), input[0].velocity());
     }
 
-    // --- Composition and comparison ---
+    // ---------------------- Composition and comparison --------------
 
     @Test
     void composesWithNBodyAccelerationCalculator() {
@@ -354,20 +326,16 @@ class VelocityVerletIntegratorTest {
 
         StateVector[] result = integrator.step(input, 3600.0, model);
 
-        // Earth acquires an inward velocity component and retains its
-        // tangential motion over one hour. Both bodies contribute gravity, so
-        // the Sun also moves slightly; that is correct for a fully coupled
-        // two-body system.
+        // Earth acquires an inward velocity component and retains its tangential motion over one hour. Both bodies contribute gravity,
+        // so the Sun also moves slightly; - correct for a fully coupled two-body system.
         assertTrue(result[1].velocity().x() < 0.0);
         assertEquals(orbitalSpeed, result[1].velocity().y(), 1.0);
     }
 
     @Test
     void differsFromForwardEulerOnTheSameInputs() {
-        // Both methods receive identical inputs, so any difference in the
-        // returned position is attributable to the integration scheme.
-        // Under constant acceleration the Verlet result also coincides with
-        // the analytical solution, while Forward Euler does not.
+        // Both methods receive identical inputs, so any difference in the returned position is attributable to the integration scheme.
+        // Under constant acceleration the Verlet result also coincides with the analytical solution, while Forward Euler does not.
         StateVector[] input = {
                 new StateVector(new Vector3D(0, 100, 0), new Vector3D(10, 0, 0))};
         AccelerationModel model = constant(new Vector3D(0, -10, 0));

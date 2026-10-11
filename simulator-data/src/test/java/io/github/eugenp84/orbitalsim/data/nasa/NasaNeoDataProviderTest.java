@@ -7,14 +7,12 @@ import io.github.eugenp84.orbitalsim.data.neo.NeoDataProvider;
 import io.github.eugenp84.orbitalsim.data.neo.NeoDataResult;
 import io.github.eugenp84.orbitalsim.data.neo.NeoDataUnavailableException;
 import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class NasaNeoDataProviderTest {
@@ -31,9 +29,8 @@ class NasaNeoDataProviderTest {
     }
 
     /**
-     * A fallback spy: records whether it was consulted, and returns a CACHED
-     * result. This is what lets tests prove the taxonomy — that 401/403/400
-     * surface *without* consulting the fallback, and that 429/5xx/timeout do.
+     * A fallback spy: records whether it was consulted, and returns a CACHED result.
+     * This is what lets tests prove the taxonomy — that 401/403/400 surface *without* consulting the fallback, and that 429/5xx/timeout do.
      */
     private static final class SpyFallback implements NeoDataProvider {
         boolean called = false;
@@ -59,7 +56,7 @@ class NasaNeoDataProviderTest {
         return new NasaNeoDataProvider(transport, new NasaNeoWsParser(), fallback, KEY);
     }
 
-    // --- Construction ---
+    // ---------------------- Construction ---
 
     @Test
     void constructorRejectsNullsAndBlankKey() {
@@ -79,7 +76,7 @@ class NasaNeoDataProviderTest {
                 () -> new NasaNeoDataProvider(t, p, f, "   "));
     }
 
-    // --- 2xx success ---
+    // ----------------------- 2xx success ---
 
     @Test
     void validSuccessReturnsLiveWithoutConsultingFallback() throws IOException {
@@ -106,7 +103,7 @@ class NasaNeoDataProviderTest {
         assertTrue(uri.contains("api_key=test-key"));
     }
 
-    // --- malformed 2xx: fallback-eligible (ADR-007 §5 category b) ---
+    // ------------- malformed 2xx: fallback-eligible ---
 
     @Test
     void malformedSuccessBodyFallsBackToCache() {
@@ -155,7 +152,7 @@ class NasaNeoDataProviderTest {
         assertEquals(DataSource.CACHED, result.source());
     }
 
-    // --- 400/401/403: surface, NO fallback (ADR-007 §6) ---
+    // --- 400/401/403: surface, NO fallback  ---
 
     @Test
     void badRequestSurfacesWithoutConsultingFallback() {
@@ -189,7 +186,7 @@ class NasaNeoDataProviderTest {
         assertFalse(fallback.called);
     }
 
-    // --- fallback itself unavailable ---
+    // ----- fallback itself unavailable ------------------------------------------------
 
     @Test
     void whenFallbackEligibleButFallbackUnavailableBothFailuresRemainDiagnosable() {
@@ -202,14 +199,12 @@ class NasaNeoDataProviderTest {
 
         assertTrue(fallback.called, "the provider did try the fallback");
 
-        // The suppressed exception's message retains the original live 500
-        // failure, proving that the diagnostic which triggered fallback is not
-        // lost when live and fallback fail together.
+        // The suppressed exception's message retains the original live 500 failure, proving that the diagnostic which triggered fallback is not lost when live and fallback fail together.
         assertEquals(1, thrown.getSuppressed().length);
         assertEquals("service returned status 500", thrown.getSuppressed()[0].getMessage());
     }
 
-    // --- date validation ---
+    // ---==================== date validation ===============================---
 
     @Test
     void validatesRequestedDates() {
@@ -225,16 +220,13 @@ class NasaNeoDataProviderTest {
 
     @Test
     void anUnexpectedRedirectStatusSurfacesAndDoesNotFallBack() {
-        // A 302 is neither success, nor a recognised recoverable external
-        // failure, nor a diagnosable client error. It surfaces as an
-        // unclassified acquisition failure rather than being masked as cached
-        // data, so the integration anomaly stays visible.
+        // A 302 is neither success, nor a recognised recoverable external failure, nor a diagnosable client error.
+        // It surfaces as an unclassified acquisition failure rather than being masked as cached data, so the integration anomaly stays visible.
         FakeHttpTransport transport = FakeHttpTransport.responding(302, "");
         SpyFallback fallback = new SpyFallback(true);
 
         assertThrows(NeoDataUnavailableException.class,
                 () -> provider(transport, fallback).findCloseApproaches(DAY, DAY));
-        assertFalse(fallback.called,
-                "an unexpected status must not silently fall back to cache");
+        assertFalse(fallback.called, "an unexpected status must not silently fall back to cache");
     }
 }

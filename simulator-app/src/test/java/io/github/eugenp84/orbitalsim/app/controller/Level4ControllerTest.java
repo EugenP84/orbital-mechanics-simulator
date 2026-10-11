@@ -53,21 +53,16 @@ class Level4ControllerTest
     {
         final double initialDistance = controller.currentDistanceMetres();
         final double initialRelativeSpeed = controller.relativeSpeedAtMinimumMetresPerSecond();
-
         controller.setSimulatedSecondsPerRealSecond(PHYSICS_STEP_SECONDS);
         controller.toggleRun();
         controller.advanceByWallClock(1.0);
         controller.reset();
-
         assertEquals(ScenarioLifecycleState.NOT_STARTED, controller.state());
         assertTrue(controller.elapsedSimulatedSeconds().isEmpty());
         assertEquals(initialDistance, controller.currentDistanceMetres(), 0.0);
         assertEquals(initialDistance, controller.minimumDistanceMetres(), 0.0);
         assertEquals(0.0, controller.minimumDistanceElapsedSeconds(), 0.0);
-        assertEquals(
-                initialRelativeSpeed,
-                controller.relativeSpeedAtMinimumMetresPerSecond(),
-                0.0);
+        assertEquals(initialRelativeSpeed, controller.relativeSpeedAtMinimumMetresPerSecond(),0.0);
         assertEquals(PHYSICS_STEP_SECONDS, controller.simulatedSecondsPerRealSecond(), 0.0);
     }
 }

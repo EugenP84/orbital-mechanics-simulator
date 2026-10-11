@@ -48,18 +48,10 @@ class EulerIntegratorTest {
         //
         //   r_next = r + v·dt = (0,100,0) + (20,0,0) = (20, 100, 0)
         //   v_next = v + a·dt = (10,0,0) + (0,-20,0) = (10, -20, 0)
-        //
-        // The y-position remains exactly 100 despite a downward acceleration.
-        // This is intentional and is the defining feature of Forward Euler:
-        // position is advanced using the CURRENT velocity, so acceleration does
-        // not affect position until the next step. Semi-implicit (symplectic)
-        // Euler would instead give y = 100 + (-20)(2) = 60, so this assertion
-        // also guards against silently implementing the wrong Euler variant.
         StateVector[] input = {
                 new StateVector(new Vector3D(0, 100, 0), new Vector3D(10, 0, 0))};
 
-        StateVector[] result = integrator.step(
-                input, 2.0, constant(new Vector3D(0, -10, 0)));
+        StateVector[] result = integrator.step(input, 2.0, constant(new Vector3D(0, -10, 0)));
 
         assertEquals(new Vector3D(20, 100, 0), result[0].position());
         assertEquals(new Vector3D(10, -20, 0), result[0].velocity());
@@ -71,8 +63,7 @@ class EulerIntegratorTest {
         Vector3D velocity = new Vector3D(10, -20, 30);
         double dt = 5.0;
 
-        StateVector[] result = integrator.step(
-                new StateVector[]{new StateVector(position, velocity)}, dt, zero());
+        StateVector[] result = integrator.step(new StateVector[]{new StateVector(position, velocity)}, dt, zero());
 
         assertEquals(position.add(velocity.multiply(dt)), result[0].position());
         assertEquals(velocity, result[0].velocity());
@@ -109,12 +100,11 @@ class EulerIntegratorTest {
         assertEquals(3.0, result[2].position().x());
     }
 
-    // --- Purity and snapshot behaviour ---
+    // ---================ Purity and snapshot behaviour ---
 
     @Test
     void inputArrayAndElementsAreUnchanged() {
-        StateVector original = new StateVector(
-                new Vector3D(0, 100, 0), new Vector3D(10, 0, 0));
+        StateVector original = new StateVector(new Vector3D(0, 100, 0), new Vector3D(10, 0, 0));
         StateVector[] input = {original};
 
         integrator.step(input, 2.0, constant(new Vector3D(0, -10, 0)));
@@ -149,7 +139,7 @@ class EulerIntegratorTest {
         assertEquals(first[0], second[0]);
     }
 
-    // --- Computational characteristic ---
+    // ---========= Computational characteristic ---=====
 
     @Test
     void evaluatesTheAccelerationModelExactlyOncePerStep() {
@@ -173,7 +163,7 @@ class EulerIntegratorTest {
         assertEquals(1, evaluations.get());
     }
 
-    // --- Boundary behaviour ---
+    // --- ======== Boundary behaviour ---
 
     @Test
     void emptySystemProducesEmptyResult() {
@@ -184,13 +174,12 @@ class EulerIntegratorTest {
 
     @Test
     void emptySystemStillValidatesTheTimestep() {
-        // Argument validation precedes the collaborator call, so an invalid
-        // timestep is rejected even when there is nothing to integrate
+        // Argument validation precedes the collaborator call, so an invalid timestep is rejected even when there is nothing to integrate
         assertThrows(IllegalArgumentException.class,
                 () -> integrator.step(new StateVector[0], -1.0, zero()));
     }
 
-    // --- Argument contract ---
+    // --------------------- Argument contract -----------------------
 
     @Test
     void nullArgumentsAreRejected() {
@@ -218,7 +207,7 @@ class EulerIntegratorTest {
                 () -> integrator.step(states, Double.POSITIVE_INFINITY, zero()));
     }
 
-    // --- AccelerationModel contract enforcement ---
+    // ------------- AccelerationModel contract enforcement ---
 
     @Test
     void nullAccelerationArrayIsRejected() {
@@ -274,13 +263,12 @@ class EulerIntegratorTest {
                 () -> integrator.step(states, 1.0, s -> null));      // broken collaborator
     }
 
-    // --- Composition with the production acceleration model ---
+    // ----------------------- Composition with the production acceleration model ---
 
     @Test
     void composesWithNBodyAccelerationCalculator() {
-        // Verifies that Euler consumes the production AccelerationModel
-        // correctly for a single step. Orbital accuracy over many steps is not
-        // in scope here; that belongs to the evaluation suite.
+        // Verifies that Euler consumes the production AccelerationModel correctly for a single step.
+        // Orbital accuracy over many steps is not in scope here; that belongs to the evaluation suite.
         double sunMass = PhysicalConstants.SOLAR_MASS;
         double earthMass = PhysicalConstants.EARTH_MASS;
         double au = PhysicalConstants.ASTRONOMICAL_UNIT;
@@ -322,8 +310,7 @@ class EulerIntegratorTest {
 
     @Test
     void earthAcceleratesTowardsTheSunInOneStep() {
-        // Physical sanity check on composition: Earth's velocity acquires a
-        // component directed back towards the Sun
+        // Physical sanity check on composition: Earth's velocity acquires a component directed back towards the Sun
         double au = PhysicalConstants.ASTRONOMICAL_UNIT;
 
         StateVector[] input = {

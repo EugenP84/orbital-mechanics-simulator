@@ -3,17 +3,14 @@ package io.github.eugenp84.orbitalsim.app.controller;
 import io.github.eugenp84.orbitalsim.evaluation.integrator.IntegratorComparisonExperiment;
 import io.github.eugenp84.orbitalsim.evaluation.integrator.IntegratorComparisonResult;
 import io.github.eugenp84.orbitalsim.evaluation.integrator.IntegratorMethod;
-
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests presentation control of the interactive numerical-integrator
- * comparison.
+ * Tests presentation control of the interactive numerical-integrator comparison.
  *
  * @author Eugeniu PLATITA
  */
@@ -26,42 +23,29 @@ class IntegratorComparisonControllerTest
     @Test
     void completedRunIsRetainedForSelectedMethod()
     {
-        final IntegratorComparisonController controller =
-                new IntegratorComparisonController();
+        final IntegratorComparisonController controller = new IntegratorComparisonController();
 
-        controller.setSimulatedSecondsPerRealSecond(
-                IntegratorComparisonExperiment.TIME_STEP_SECONDS);
+        controller.setSimulatedSecondsPerRealSecond(IntegratorComparisonExperiment.TIME_STEP_SECONDS);
         controller.toggleRun();
 
-        controller.advanceByWallClock(
-                IntegratorComparisonExperiment.COMPARISON_STEPS);
+        controller.advanceByWallClock(IntegratorComparisonExperiment.COMPARISON_STEPS);
 
         assertEquals(
                 IntegratorComparisonState.COMPLETED,
                 controller.state());
 
-        assertTrue(
-                controller.completedResult(
-                        IntegratorMethod.FORWARD_EULER).isPresent());
+        assertTrue(controller.completedResult(IntegratorMethod.FORWARD_EULER).isPresent());
+        final IntegratorComparisonResult retained = controller.completedResult(IntegratorMethod.FORWARD_EULER).orElseThrow();
 
-        final IntegratorComparisonResult retained =
-                controller.completedResult(
-                        IntegratorMethod.FORWARD_EULER).orElseThrow();
-
-        assertEquals(
-                IntegratorComparisonExperiment.COMPARISON_STEPS,
-                retained.completedSteps());
+        assertEquals(IntegratorComparisonExperiment.COMPARISON_STEPS, retained.completedSteps());
     }
 
     @Test
     void freshControllerHasFreshForwardEulerRun()
     {
-        final IntegratorComparisonController controller =
-                new IntegratorComparisonController();
+        final IntegratorComparisonController controller = new IntegratorComparisonController();
 
-        assertEquals(
-                IntegratorMethod.FORWARD_EULER,
-                controller.selectedMethod());
+        assertEquals(IntegratorMethod.FORWARD_EULER, controller.selectedMethod());
         assertEquals(
                 IntegratorComparisonState.READY,
                 controller.state());
@@ -78,7 +62,6 @@ class IntegratorComparisonControllerTest
                 new IntegratorComparisonController();
 
         controller.toggleRun();
-
         assertFalse(controller.canSelectMethod());
 
         assertThrows(
@@ -95,9 +78,7 @@ class IntegratorComparisonControllerTest
 
         controller.toggleRun();
         controller.toggleRun();
-
         controller.advanceByWallClock(ONE_STEP_WALL_CLOCK_SECONDS);
-
         assertEquals(0L, controller.currentResult().completedSteps());
 
         controller.toggleRun();
@@ -109,11 +90,9 @@ class IntegratorComparisonControllerTest
     @Test
     void presentationRateDoesNotChangeFixedNumericalStep()
     {
-        final IntegratorComparisonController controller =
-                new IntegratorComparisonController();
+        final IntegratorComparisonController controller = new IntegratorComparisonController();
 
-        controller.setSimulatedSecondsPerRealSecond(
-                2.0 * IntegratorComparisonExperiment.TIME_STEP_SECONDS);
+        controller.setSimulatedSecondsPerRealSecond(2.0 * IntegratorComparisonExperiment.TIME_STEP_SECONDS);
 
         controller.toggleRun();
         controller.advanceByWallClock(1.0);
@@ -129,15 +108,13 @@ class IntegratorComparisonControllerTest
     @Test
     void resetReplacesProgressButRetainsCompletedResults()
     {
-        final IntegratorComparisonController controller =
-                new IntegratorComparisonController();
+        final IntegratorComparisonController controller = new IntegratorComparisonController();
 
         controller.setSimulatedSecondsPerRealSecond(
                 IntegratorComparisonExperiment.TIME_STEP_SECONDS);
         controller.toggleRun();
 
-        controller.advanceByWallClock(
-                IntegratorComparisonExperiment.COMPARISON_STEPS);
+        controller.advanceByWallClock(IntegratorComparisonExperiment.COMPARISON_STEPS);
 
         assertTrue(
                 controller.completedResult(
@@ -158,8 +135,7 @@ class IntegratorComparisonControllerTest
     @Test
     void selectedMethodCreatesFreshRun()
     {
-        final IntegratorComparisonController controller =
-                new IntegratorComparisonController();
+        final IntegratorComparisonController controller = new IntegratorComparisonController();
 
         controller.selectMethod(IntegratorMethod.RUNGE_KUTTA_4);
 
@@ -176,8 +152,7 @@ class IntegratorComparisonControllerTest
     @Test
     void simulatedTimeIsAccumulatedUntilWholeStepIsAvailable()
     {
-        final IntegratorComparisonController controller =
-                new IntegratorComparisonController();
+        final IntegratorComparisonController controller = new IntegratorComparisonController();
 
         controller.setSimulatedSecondsPerRealSecond(
                 IntegratorComparisonExperiment.TIME_STEP_SECONDS);

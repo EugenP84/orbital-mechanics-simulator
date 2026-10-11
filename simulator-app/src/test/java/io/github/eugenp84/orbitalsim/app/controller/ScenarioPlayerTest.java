@@ -4,18 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.github.eugenp84.orbitalsim.core.math.PhysicalConstants;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level0Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level1Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioSession;
-
 import org.junit.jupiter.api.Test;
 
 /**
  * Tests for {@link ScenarioPlayer}, the level-agnostic lifecycle/presentation core. Driven with real
- * Level 0 and Level 1 sessions to demonstrate the player carries no level-specific knowledge.
+ * L0 and L1 sessions to demonstrate the player carries no level-specific knowledge.
  *
  * @author Eugeniu PLATITA
  */

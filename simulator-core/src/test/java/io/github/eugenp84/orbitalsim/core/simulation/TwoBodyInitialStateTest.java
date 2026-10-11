@@ -3,11 +3,8 @@ package io.github.eugenp84.orbitalsim.core.simulation;
 import io.github.eugenp84.orbitalsim.core.math.Vector3D;
 import io.github.eugenp84.orbitalsim.core.model.CelestialBody;
 import io.github.eugenp84.orbitalsim.core.model.CelestialBodyType;
-
 import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class TwoBodyInitialStateTest

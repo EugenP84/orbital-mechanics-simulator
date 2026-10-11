@@ -1,10 +1,13 @@
-package io.github.eugenp84.orbitalsim.data.nasa;
+//package io.github.eugenp84.orbitalsim.data.nasa;
+package io.github.eugenp84.orbitalsim.data.neo;
 
+import io.github.eugenp84.orbitalsim.data.nasa.BundledNeoDataProvider;
+import io.github.eugenp84.orbitalsim.data.nasa.NasaNeoWsParser;
+import io.github.eugenp84.orbitalsim.data.nasa.NeoDataFormatException;
 import io.github.eugenp84.orbitalsim.data.neo.DataSource;
 import io.github.eugenp84.orbitalsim.data.neo.NeoDataResult;
 import io.github.eugenp84.orbitalsim.data.neo.NeoDataUnavailableException;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.time.LocalDate;
 

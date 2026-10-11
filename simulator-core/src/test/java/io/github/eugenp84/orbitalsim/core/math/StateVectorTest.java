@@ -1,7 +1,6 @@
 package io.github.eugenp84.orbitalsim.core.math;
 
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class StateVectorTest {

@@ -52,8 +52,7 @@ class HorizonsExperimentLoaderTest
     }
 
     /**
-     * Confirms that Earth-to-Apophis separation decreases across the three
-     * deliberately ordered pre-encounter candidate epochs.
+     * Confirms that Earth-to-Apophis separation decreases across the three deliberately ordered pre-encounter candidate epochs.
      */
     @Test
     void preservesApproachGeometryAcrossCandidates() {
@@ -80,8 +79,7 @@ class HorizonsExperimentLoaderTest
     }
 
     /**
-     * Confirms the broad physical sanity checks agreed in ADR-011 without using
-     * them as substitutes for provenance/frame validation.
+     * Confirms the broad physical sanity checks without using them as substitutes for provenance/frame validation.
      */
     @Test
     void passesEarthPhysicalSanityChecks()

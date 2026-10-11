@@ -35,15 +35,14 @@ class RungeKutta4IntegratorTest {
 
     private static void assertVectorEquals(Vector3D expected, Vector3D actual, double scale) {
         // An absolute floor keeps the tolerance meaningful when the expected
-        // magnitude is at or near zero, while remaining relative for large
-        // quantities.
+        // magnitude is at or near zero, while remaining relative for large quantities.
         double tolerance = Math.max(1.0, Math.abs(scale)) * RELATIVE_TOLERANCE;
         assertEquals(expected.x(), actual.x(), tolerance, "x component");
         assertEquals(expected.y(), actual.y(), tolerance, "y component");
         assertEquals(expected.z(), actual.z(), tolerance, "z component");
     }
 
-    // --- Algorithm correctness ---
+    // ---============================ Algorithm correctness ---
 
     @Test
     void reproducesAnalyticalSolutionUnderConstantAcceleration() {
@@ -71,15 +70,11 @@ class RungeKutta4IntegratorTest {
     @Test
     void matchesTheHarmonicOscillatorAnalyticalSolution() {
         // a = -ω²r with ω = 1, starting at r = (1,0,0), v = 0, has the exact
-        // solution x(t) = cos t, v(t) = -sin t. Unlike the constant- and
-        // zero-acceleration cases, acceleration here changes at every trial
-        // position, so this exercises the RK4 stage structure itself — and it
-        // does so without involving GravityCalculator.
+        // solution x(t) = cos t, v(t) = -sin t. Unlike the constant- and zero-acceleration cases, acceleration here changes at every trial
+        // position, so this exercises the RK4 stage structure itself — and it does so without involving GravityCalculator.
         //
-        // Integration ends at t = 2.0 rather than at a full period: for a
-        // linear oscillator RK4's leading error term is a pure phase error, so
-        // amplitude error at a period boundary converges one order faster and
-        // would misrepresent the method's accuracy.
+        // Integration ends at t = 2.0 rather than at a full period: for a linear oscillator RK4's leading error term is a pure phase error, so
+        // amplitude error at a period boundary converges one order faster and would misrepresent the method's accuracy.
         AccelerationModel harmonic = states -> {
             Vector3D[] accelerations = new Vector3D[states.length];
             for (int i = 0; i < states.length; i++) {
@@ -105,8 +100,7 @@ class RungeKutta4IntegratorTest {
 
     @Test
     void agreesWithVelocityVerletUnderConstantAcceleration() {
-        // Both methods are exact for constant acceleration, so they must agree
-        // with each other and with the analytical result
+        // Both methods are exact for constant acceleration, so they must agree with each other and with the analytical result
         StateVector[] input = {
                 new StateVector(new Vector3D(0, 100, 0), new Vector3D(10, 0, 0))};
         AccelerationModel model = constant(new Vector3D(0, -10, 0));
@@ -125,8 +119,7 @@ class RungeKutta4IntegratorTest {
         Vector3D velocity = new Vector3D(10, -20, 30);
         double dt = 5.0;
 
-        StateVector[] result = integrator.step(
-                new StateVector[]{new StateVector(position, velocity)}, dt, zero());
+        StateVector[] result = integrator.step(new StateVector[]{new StateVector(position, velocity)}, dt, zero());
 
         assertVectorEquals(position.add(velocity.multiply(dt)), result[0].position(), 200.0);
         assertVectorEquals(velocity, result[0].velocity(), 30.0);
@@ -148,9 +141,8 @@ class RungeKutta4IntegratorTest {
 
     @Test
     void evaluatesTheAccelerationModelFourTimesPerStep() {
-        // Four evaluations per step, intrinsic to classical RK4. Compare with
-        // Forward Euler (one) and Velocity Verlet (two) — the basis of the
-        // computational cost comparison in Objective 6.
+        // Four evaluations per step, intrinsic to classical RK4.
+        // Compare with Forward Euler (one) and Velocity Verlet (two) — the basis of the computational cost comparison in Objective 6.
         AtomicInteger evaluations = new AtomicInteger();
 
         AccelerationModel counting = states -> {
@@ -169,11 +161,9 @@ class RungeKutta4IntegratorTest {
 
     @Test
     void stagesAreEvaluatedAtTheExpectedTrialPositions() {
-        // Verifies the stage structure: k₁ at r, k₂ and k₃ at midpoints reached
-        // using the preceding stage, k₄ at the endpoint reached using k₃.
+        // Verifies the stage structure: k₁ at r, k₂ and k₃ at midpoints reached using the preceding stage, k₄ at the endpoint reached using k₃.
         //
-        // With zero acceleration the velocity never changes, so the trial
-        // positions are analytically simple:
+        // With zero acceleration the velocity never changes, so the trial positions are analytically simple:
         //   stage 1: r
         //   stage 2: r + ½·v·Δt
         //   stage 3: r + ½·v·Δt   (k₂ᵥ equals v when acceleration is zero)
@@ -200,10 +190,8 @@ class RungeKutta4IntegratorTest {
 
     @Test
     void intermediateStagesCarryStageAlignedVelocities() {
-        // Each RK4 trial state's position and velocity form the stage
-        // approximation associated with the same stage time, unlike Velocity
-        // Verlet's deliberately staggered carrier. With constant acceleration
-        // a and zero initial velocity:
+        // Each RK4 trial state's position and velocity form the stage approximation associated with the same stage time,
+        // unlike Velocity Verlet's deliberately staggered carrier. With constant acceleration a and zero initial velocity:
         //   stage 2 velocity = ½·a·Δt
         //   stage 4 velocity = k₃ₐ·Δt = a·Δt
         List<Vector3D> observed = new ArrayList<>();
@@ -227,9 +215,8 @@ class RungeKutta4IntegratorTest {
     @Test
     void everyStageIsAdvancedFromTheInitialState() {
         // A common RK4 error is to advance stage 3 from stage 2 rather than again from the state at the start of the step.
-        // With constant velocity and zero acceleration, cumulative advancement would place
-        // stage 3 at r + v·Δt rather than r + ½·v·Δt, and stage 4 at
-        // r + 1.5·v·Δt rather than r + v·Δt.
+        // With constant velocity and zero acceleration,
+        // cumulative advancement would place stage 3 at r + v·Δt rather than r + ½·v·Δt, and stage 4 at r + 1.5·v·Δt rather than r + v·Δt.
         List<Vector3D> observed = new ArrayList<>();
 
         AccelerationModel recording = states -> {
@@ -246,7 +233,7 @@ class RungeKutta4IntegratorTest {
         assertVectorEquals(new Vector3D(200, 0, 0), observed.get(3), 100.0);
     }
 
-    // ----- Purity and snapshot behaviour -----
+    // ------------------------- Purity and snapshot behaviour ---===============--
 
     @Test
     void inputArrayAndElementsAreUnchanged() {
@@ -281,7 +268,7 @@ class RungeKutta4IntegratorTest {
         assertEquals(first[0], second[0]);
     }
 
-    // ------------ Boundary behaviour ------
+    // ------------ Boundary behaviour ---------------------
 
     @Test
     void emptySystemProducesEmptyResult() {
@@ -294,7 +281,7 @@ class RungeKutta4IntegratorTest {
                 () -> integrator.step(new StateVector[0], -1.0, zero()));
     }
 
-    // ----- Argument contract ---
+    // --======================--- Argument contract ---
 
     @Test
     void nullArgumentsAreRejected() {
@@ -322,7 +309,7 @@ class RungeKutta4IntegratorTest {
                 () -> integrator.step(states, Double.POSITIVE_INFINITY, zero()));
     }
 
-    // ---- AccelerationModel contract enforcement ------
+    // --------------- AccelerationModel contract enforcement ---------------------------------
 
     @Test
     void malformedAccelerationResultIsRejectedOnTheFirstEvaluation() {
@@ -365,8 +352,7 @@ class RungeKutta4IntegratorTest {
 
     @Test
     void failureOnALaterStageLeavesInputUnchanged() {
-        // The two-phase contract holds for a four-stage method: a step failing
-        // at its third evaluation has committed nothing
+        // The two-phase contract holds for a four-stage method: a step failing at its third evaluation has committed nothing
         StateVector original = new StateVector(
                 new Vector3D(0, 100, 0), new Vector3D(10, 0, 0));
         StateVector[] input = {original};
@@ -385,7 +371,7 @@ class RungeKutta4IntegratorTest {
         assertEquals(new Vector3D(10, 0, 0), input[0].velocity());
     }
 
-    // --------- Composition with the production acceleration model -------------
+    // --------- Composition with the production acceleration model !!!!!!!!!!!!!! -------------
 
     @Test
     void composesWithNBodyAccelerationCalculator() {

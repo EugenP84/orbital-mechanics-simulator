@@ -2,11 +2,9 @@ package io.github.eugenp84.orbitalsim.app.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import io.github.eugenp84.orbitalsim.core.math.PhysicalConstants;
 import io.github.eugenp84.orbitalsim.learning.scenario.Level0Scenario;
 import io.github.eugenp84.orbitalsim.learning.scenario.ScenarioLifecycleState;
-
 import org.junit.jupiter.api.Test;
 
 /**

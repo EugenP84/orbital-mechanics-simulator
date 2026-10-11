@@ -4,7 +4,6 @@ import io.github.eugenp84.orbitalsim.core.math.PhysicalConstants;
 import io.github.eugenp84.orbitalsim.core.math.StateVector;
 import io.github.eugenp84.orbitalsim.core.math.Vector3D;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class NBodyAccelerationCalculatorTest {
@@ -26,8 +25,7 @@ class NBodyAccelerationCalculatorTest {
 
     @Test
     void emptyConfigurationProducesEmptyResult() {
-        NBodyAccelerationCalculator calculator =
-                new NBodyAccelerationCalculator(new GravitationalBodyConfig[]{});
+        NBodyAccelerationCalculator calculator = new NBodyAccelerationCalculator(new GravitationalBodyConfig[]{});
 
         assertEquals(0, calculator.accelerationsAt(new StateVector[]{}).length);
     }
@@ -38,8 +36,7 @@ class NBodyAccelerationCalculatorTest {
                 new GravitationalBodyConfig[]{
                         GravitationalBodyConfig.contributing(PhysicalConstants.SOLAR_MASS)});
 
-        Vector3D[] accelerations = calculator.accelerationsAt(
-                new StateVector[]{restingAt(0, 0, 0)});
+        Vector3D[] accelerations = calculator.accelerationsAt(new StateVector[]{restingAt(0, 0, 0)});
 
         assertEquals(1, accelerations.length);
         assertEquals(Vector3D.ZERO, accelerations[0]);
@@ -47,8 +44,7 @@ class NBodyAccelerationCalculatorTest {
 
     @Test
     void configurationWithNoContributingSourcesProducesZeroAccelerations() {
-        // A valid boundary configuration of the API: every body is configured
-        // not to act as a source, so no body has anything to be attracted by
+        // A valid boundary configuration of the API: every body is configured not to act as a source, so no body has anything to be attracted by
         NBodyAccelerationCalculator calculator = new NBodyAccelerationCalculator(
                 new GravitationalBodyConfig[]{
                         GravitationalBodyConfig.nonContributing(1e30),
@@ -62,7 +58,7 @@ class NBodyAccelerationCalculatorTest {
         assertEquals(Vector3D.ZERO, accelerations[1]);
     }
 
-    // --- Fully coupled systems ---
+    // ---======================= Fully coupled systems ======================---
 
     @Test
     void twoBodyAccelerationsMatchDirectPairwiseCalculation() {
@@ -78,11 +74,8 @@ class NBodyAccelerationCalculatorTest {
 
         Vector3D[] accelerations = calculator.accelerationsAt(new StateVector[]{s0, s1});
 
-        Vector3D expected0 = GravityCalculator.accelerationBetween(
-                s0.position(), s1.position(), m1);
-        Vector3D expected1 = GravityCalculator.accelerationBetween(
-                s1.position(), s0.position(), m0);
-
+        Vector3D expected0 = GravityCalculator.accelerationBetween(s0.position(), s1.position(), m1);
+        Vector3D expected1 = GravityCalculator.accelerationBetween(s1.position(), s0.position(), m0);
         assertVectorEquals(expected0, accelerations[0], expected0.magnitude());
         assertVectorEquals(expected1, accelerations[1], expected1.magnitude());
 
@@ -93,9 +86,9 @@ class NBodyAccelerationCalculatorTest {
 
     @Test
     void fullyCoupledTwoBodySystemProducesEqualAndOppositePairForces() {
-        // Newton's third law holds for a fully coupled configuration. This is
-        // a property of that configuration, not of the calculator in general:
-        // contributesGravity = false deliberately permits asymmetric models.
+        // Newton's third law holds for a fully coupled configuration.
+        // This is a property of that configuration, not of the calculator in general:
+        // contributesGravity = false permits asymmetric models.
         double m0 = 1.0e30;
         double m1 = 5.0e24;
 
@@ -113,14 +106,12 @@ class NBodyAccelerationCalculatorTest {
         Vector3D residual = force0.add(force1);
 
         // Exact cancellation is not expected in IEEE 754 arithmetic
-        // (ADR-004, amendment to ADR-003)
         assertVectorEquals(Vector3D.ZERO, residual, force0.magnitude());
     }
 
     @Test
     void threeBodyAccelerationIsTheSumOfPairwiseContributions() {
-        // Verifies composition. The pairwise physics itself is verified by
-        // GravityCalculatorTest and is not re-derived here.
+        // Verifies composition. The pairwise physics itself is verified by GravityCalculatorTest and is not re-derived here.
         double m0 = 1.0e30;
         double m1 = 2.0e29;
         double m2 = 5.0e24;
@@ -145,7 +136,7 @@ class NBodyAccelerationCalculatorTest {
         assertVectorEquals(expected0, accelerations[0], expected0.magnitude());
     }
 
-    // --- Restricted (asymmetric) configuration ---
+    // --- Restricted (asymmetric) configuration !!!!!!!!!!!!!---
 
     @Test
     void nonContributingBodyStillReceivesGravity() {
@@ -207,8 +198,7 @@ class NBodyAccelerationCalculatorTest {
     @Test
     void suppressingContributionChangesOtherBodiesAccelerations() {
         // The same geometry with and without the third body contributing:
-        // the primaries' accelerations must differ, confirming the flag is
-        // actually applied rather than incidentally negligible
+        // the primaries' accelerations must differ, confirming the flag is actually applied rather than incidentally negligible
         double m0 = 1.0e30;
         double m1 = 1.0e29;
         double m2 = 5.0e28;
@@ -240,9 +230,7 @@ class NBodyAccelerationCalculatorTest {
 
     @Test
     void sameCalculatorEvaluatesIndependentlyAtDifferentStates() {
-        // The property RK4 depends on: a fixed physical configuration
-        // evaluated at arbitrary supplied states, retaining nothing between
-        // calls (ADR-004)
+        // The property RK4 depends on: a fixed physical configuration evaluated at arbitrary supplied states, retaining nothing between calls
         double m0 = PhysicalConstants.SOLAR_MASS;
         double m1 = PhysicalConstants.EARTH_MASS;
 
@@ -303,11 +291,10 @@ class NBodyAccelerationCalculatorTest {
 
         StateVector[] states = {restingAt(0, 0, 0), restingAt(1e11, 0, 0)};
 
-        assertNotSame(calculator.accelerationsAt(states),
-                calculator.accelerationsAt(states));
+        assertNotSame(calculator.accelerationsAt(states), calculator.accelerationsAt(states));
     }
 
-    // --- Configuration immutability ---
+    // --------------------- Configuration immutability ---
 
     @Test
     void callerMutationOfConfigurationArrayDoesNotAffectCalculator() {
@@ -450,9 +437,7 @@ class NBodyAccelerationCalculatorTest {
 
     @Test
     void coincidentNonContributingBodiesAreNotEvaluated() {
-        // Neither body is a source, so their mutual geometry is never passed
-        // to GravityCalculator and no exception arises — matching the
-        // documented contract for accelerationsAt
+        // Neither body is a source, so their mutual geometry is never passed to GravityCalculator and no exception arises — matching the documented contract for accelerationsAt
         NBodyAccelerationCalculator calculator = new NBodyAccelerationCalculator(
                 new GravitationalBodyConfig[]{
                         GravitationalBodyConfig.nonContributing(1e30),

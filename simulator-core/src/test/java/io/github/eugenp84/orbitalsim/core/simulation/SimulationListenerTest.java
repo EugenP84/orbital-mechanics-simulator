@@ -8,7 +8,6 @@ import io.github.eugenp84.orbitalsim.core.model.CelestialBody;
 import io.github.eugenp84.orbitalsim.core.model.CelestialBodyType;
 import io.github.eugenp84.orbitalsim.core.physics.AccelerationModel;
 import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -19,7 +18,7 @@ class SimulationListenerTest {
 
     private static final double DT = 60.0;
 
-    // --- Fixtures ---
+    // ------------------------- Fixtures ---
 
     private static List<BodySnapshot> twoBodies() {
         return List.of(
@@ -147,7 +146,7 @@ class SimulationListenerTest {
         assertEquals(0, listener.breakdowns.get(0).firstNonFiniteBodyIndex());
     }
 
-    // --- 3-5: advanceBy() publication cadence ---
+    // --- ============ advanceBy() publication cadence ============== !!!!!!!!!---
 
     @Test
     void advanceByWithZeroCommittedStepsPublishesNothing() {
@@ -387,11 +386,9 @@ class SimulationListenerTest {
         engine.addListener(adder);
 
         engine.step();
-        assertEquals(0, lateArrival.snapshots.size(),
-                "a listener added mid-dispatch must not be notified during that dispatch");
+        assertEquals(0, lateArrival.snapshots.size(),"a listener added mid-dispatch must not be notified during that dispatch");
 
         engine.step();
-        assertEquals(1, lateArrival.snapshots.size(),
-                "it receives events from the next publication onward");
+        assertEquals(1, lateArrival.snapshots.size(), "it receives events from the next publication onward");
     }
 }

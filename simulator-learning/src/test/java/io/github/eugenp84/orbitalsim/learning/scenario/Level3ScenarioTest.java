@@ -26,10 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import io.github.eugenp84.orbitalsim.core.simulation.AdvanceResult;
 
 /**
- * Headless tests for {@link Level3Scenario}, exercised through the real {@link ScenarioSession}. The
- * two full-horizon tests run the production six-year experiment end to end; the rest are cheap.
- * Collision failures are exercised by evaluating the policy against contrived overlapping snapshots,
- * because the calibrated learner envelope never approaches surface contact.
+ * Headless tests for {@link Level3Scenario}, exercised through the real {@link ScenarioSession}.
+ * The two full-horizon tests run the production six-year experiment end to end; the rest are cheap.
+ * Collision failures are exercised by evaluating the policy against contrived overlapping snapshots, because the calibrated learner envelope never approaches surface contact.
  *
  * @author Eugeniu PLATITA
  */

@@ -13,35 +13,17 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Cross-method regression checks for the three integration strategies.
  * <p>
- * These tests assert relative empirical behaviour across integrators for one
- * controlled scenario, rather than the correctness of any single implementation.
+ * These tests assert relative empirical behaviour across integrators for one controlled scenario, rather than the correctness of any single implementation.
  * They are deliberately kept out of the per-integrator suites:
- * a cross-method assertion placed inside, say,
- * {@code RungeKutta4IntegratorTest} would allow a change to a different
- * integrator to fail RK4's suite while RK4 itself remained correct.
- * <p>
- * The accuracy ordering asserted here is an empirical observation for the
- * scenario and timestep selected, not a mathematical consequence of the
- * methods' formal convergence orders. Convergence order governs asymptotic
- * behaviour; at any fixed timestep the error constants matter, and a
- * higher-order method can produce a larger error than a lower-order one
- * outside its asymptotic regime.
- * <p>
- * Results here are directional rather than quantitative. Systematic
- * measurement of accuracy, energy conservation and computational cost across
- * scenarios and timesteps belongs to the evaluation work for Objective 6; this
- * suite guards only the qualitative ordering observed for the controlled
- * scenario and timestep selected here.
+ * a cross-method assertion placed inside, {@code RungeKutta4IntegratorTest} would allow a change to a different integrator to fail RK4's suite while RK4 itself remained correct.
+ *
+ * @author Eugeniu PLATITA
  */
 class IntegratorComparisonTest {
 
     private static final double RADIUS = PhysicalConstants.ASTRONOMICAL_UNIT;
-
-    private static final double CIRCULAR_SPEED = Math.sqrt(
-            PhysicalConstants.GRAVITATIONAL_CONSTANT * PhysicalConstants.SOLAR_MASS / RADIUS);
-
+    private static final double CIRCULAR_SPEED = Math.sqrt(PhysicalConstants.GRAVITATIONAL_CONSTANT * PhysicalConstants.SOLAR_MASS / RADIUS);
     private static final double PERIOD = 2.0 * Math.PI * RADIUS / CIRCULAR_SPEED;
-
     private static final int STEPS = 400;
 
     private static final AccelerationModel CENTRAL_FIELD = new NBodyAccelerationCalculator(
@@ -73,10 +55,8 @@ class IntegratorComparisonTest {
         double verletError = closureError(new VelocityVerletIntegrator());
         double rk4Error = closureError(new RungeKutta4Integrator());
 
-        assertTrue(rk4Error < verletError,
-                "RK4 error " + rk4Error + " should be below Verlet's " + verletError);
-        assertTrue(verletError < eulerError,
-                "Verlet error " + verletError + " should be below Euler's " + eulerError);
+        assertTrue(rk4Error < verletError,"RK4 error " + rk4Error + " should be below Verlet's " + verletError);
+        assertTrue(verletError < eulerError,"Verlet error " + verletError + " should be below Euler's " + eulerError);
     }
 
     @Test
@@ -92,32 +72,23 @@ class IntegratorComparisonTest {
         double dt = PERIOD / 100_000;
 
         Vector3D euler = new EulerIntegrator().step(input, dt, CENTRAL_FIELD)[1].position();
-        Vector3D verlet =
-                new VelocityVerletIntegrator().step(input, dt, CENTRAL_FIELD)[1].position();
+        Vector3D verlet = new VelocityVerletIntegrator().step(input, dt, CENTRAL_FIELD)[1].position();
 
-        double centralAcceleration = PhysicalConstants.GRAVITATIONAL_CONSTANT
-                * PhysicalConstants.SOLAR_MASS / (RADIUS * RADIUS);
+        double centralAcceleration = PhysicalConstants.GRAVITATIONAL_CONSTANT * PhysicalConstants.SOLAR_MASS / (RADIUS * RADIUS);
         double expectedDifference = 0.5 * centralAcceleration * dt * dt;
 
-        assertEquals(expectedDifference, euler.distanceTo(verlet),
-                expectedDifference * 1e-6);
+        assertEquals(expectedDifference, euler.distanceTo(verlet),expectedDifference * 1e-6);
     }
 
     @Test
     void verletAndRungeKutta4AgreeFarMoreCloselyThanEuler() {
-        // Both second- and fourth-order methods include the ½·a·Δt² term, so
-        // over one step they agree to a much higher order than either agrees
-        // with Forward Euler. This is a gross regression check: it would fail
-        // if a method were implemented at the wrong order, but it is not
-        // evidence of comparative accuracy.
+        // Both second- and fourth-order methods include the ½·a·Δt² term, so over one step they agree to a much higher order than either agrees with Forward Euler.
         StateVector[] input = initialStates();
         double dt = PERIOD / 100_000;
 
         Vector3D euler = new EulerIntegrator().step(input, dt, CENTRAL_FIELD)[1].position();
-        Vector3D verlet =
-                new VelocityVerletIntegrator().step(input, dt, CENTRAL_FIELD)[1].position();
-        Vector3D rk4 =
-                new RungeKutta4Integrator().step(input, dt, CENTRAL_FIELD)[1].position();
+        Vector3D verlet = new VelocityVerletIntegrator().step(input, dt, CENTRAL_FIELD)[1].position();
+        Vector3D rk4 = new RungeKutta4Integrator().step(input, dt, CENTRAL_FIELD)[1].position();
 
         double verletToRk4 = verlet.distanceTo(rk4);
         double eulerToVerlet = euler.distanceTo(verlet);

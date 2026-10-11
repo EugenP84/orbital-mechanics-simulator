@@ -223,7 +223,4 @@ Decision Records (ADRs) under `docs/decisions/`.
 
 ## Status
 
-All five modules are implemented and tested. The automated suite comprises
-451 JUnit 5 test executions, all passing.
-
-Remaining work is limited to Javadoc refinement and minor code polish.
+Implemented and tested.

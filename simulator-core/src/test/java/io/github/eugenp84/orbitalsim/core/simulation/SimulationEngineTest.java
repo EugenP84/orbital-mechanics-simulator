@@ -282,8 +282,7 @@ class SimulationEngineTest {
         };
         SimulationEngine engine = engineWith(allInvalid);
 
-        StepResult.NumericalBreakdown breakdown = assertInstanceOf(
-                StepResult.NumericalBreakdown.class, engine.step());
+        StepResult.NumericalBreakdown breakdown = assertInstanceOf(StepResult.NumericalBreakdown.class, engine.step());
 
         assertEquals(0, breakdown.firstNonFiniteBodyIndex());
     }
@@ -365,8 +364,7 @@ class SimulationEngineTest {
         engine.selectIntegrator(shiftingIntegrator(secondShift));
         SimulationSnapshot afterSwitch = engine.snapshot();
 
-        assertEquals(beforeSwitch, afterSwitch,
-                "switching the strategy must not alter state or clock (ADR-006 s10)");
+        assertEquals(beforeSwitch, afterSwitch,"switching the strategy must not alter state or clock (ADR-006 s10)");
         assertEquals(DT, engine.integrationStepSeconds(), "timestep unchanged");
 
         // The next step uses the new strategy
