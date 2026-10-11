@@ -10,25 +10,12 @@ import io.github.eugenp84.orbitalsim.core.physics.GravitationalBodyConfig;
 import io.github.eugenp84.orbitalsim.core.physics.NBodyAccelerationCalculator;
 import io.github.eugenp84.orbitalsim.core.simulation.BodySnapshot;
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationEngine;
-
 import java.util.List;
 
 /**
  * Assembles a runnable Level 0 (Planet Creation) attempt from the learner's chosen planet parameters:
  * mass, radius, initial orbital distance, and tangential speed.
  * <p>
- * Level 0 introduces the parameter space "before any orbital objective is imposed" (project concept).
- * The learner's tangential speed is therefore taken as given and used directly as the initial
- * velocity — the planet is deliberately <em>not</em> placed on a derived circular orbit, because doing
- * so would impose the very orbital objective this level precedes. The circular speed for the chosen
- * distance is computed only as a read-only reference exposed on the attempt, to bridge into Level 1.
- * <p>
- * Level 0 has no physical assessment and no learner-failure path. Configuration validity is enforced
- * here: parameters must be positive and finite, and the planet must start physically clear of the
- * star (its surface must not reach the star's surface at the initial distance). Completion is then
- * unconditional (see {@link Level0PlanetCreationCompletionPolicy}). The star is fixed; only the planet
- * is configured. The gravitational parameter uses the coupled two-body sum {@code G (M_star + m)} to
- * match the rest of the simulation.
  *
  * @author Eugeniu PLATITA
  */
@@ -36,10 +23,8 @@ public final class Level0Scenario
 {
     private static final String STAR_ID = "l0-star";
     private static final String PLANET_ID = "l0-planet";
-
     private static final double STAR_MASS = PhysicalConstants.SOLAR_MASS;
     private static final double STAR_RADIUS = PhysicalConstants.SOLAR_RADIUS;
-
     private static final double TIME_STEP_SECONDS = 21_600.0;
     private static final int STEPS_PER_OBSERVATION = 1;
 
@@ -47,17 +32,11 @@ public final class Level0Scenario
      * The circular-orbit speed for a planet of the given mass at the given distance from the star,
      * {@code sqrt(mu / r)} with {@code mu = G (M_star + m)} to match the coupled two-body model.
      * <p>
-     * Exposed so a caller can derive a physically consistent reference speed — for example a default
-     * configuration — without duplicating the relationship, and used internally by {@link
-     * #createAttempt} to compute the attempt's read-only circular-speed reference. The result is
-     * validated: valid inputs whose combination overflows to a non-finite speed are rejected rather
-     * than silently returned.
      *
      * @param planetMassKilograms   the planet's mass; positive and finite
      * @param orbitalDistanceMetres the star–planet distance; positive and finite
      * @return the circular speed in metres per second; positive and finite
-     * @throws IllegalArgumentException if either argument is not positive and finite, or if the
-     *                                  configuration does not produce a positive finite circular speed
+     * @throws IllegalArgumentException if either argument is not positive and finite, or if the configuration does not produce a positive finite circular speed
      */
     public double circularSpeedMetresPerSecond(
             final double planetMassKilograms, final double orbitalDistanceMetres)
@@ -65,30 +44,25 @@ public final class Level0Scenario
         requirePositiveFinite(planetMassKilograms, "planetMassKilograms");
         requirePositiveFinite(orbitalDistanceMetres, "orbitalDistanceMetres");
 
-        final double gravitationalParameter =
-                PhysicalConstants.GRAVITATIONAL_CONSTANT * (STAR_MASS + planetMassKilograms);
+        final double gravitationalParameter = PhysicalConstants.GRAVITATIONAL_CONSTANT * (STAR_MASS + planetMassKilograms);
         final double circularSpeed = Math.sqrt(gravitationalParameter / orbitalDistanceMetres);
 
         if (!Double.isFinite(circularSpeed) || circularSpeed <= 0.0)
         {
-            throw new IllegalArgumentException(
-                    "configuration does not produce a positive finite circular speed");
+            throw new IllegalArgumentException("configuration does not produce a positive finite circular speed");
         }
         return circularSpeed;
     }
 
     /**
-     * Builds an attempt in which a planet of the given mass and radius starts at the given distance
-     * from the star, moving tangentially at the given speed.
+     * Builds an attempt in which a planet of the given mass and radius starts at the given distance from the star, moving tangentially at the given speed.
      *
      * @param planetMassKilograms   the planet's mass; positive and finite
      * @param planetRadiusMetres    the planet's radius; positive and finite
-     * @param orbitalDistanceMetres the initial star–planet distance; positive and finite, and greater
-     *                              than the sum of the star and planet radii so the bodies start clear
+     * @param orbitalDistanceMetres the initial star–planet distance; positive and finite, and greater than the sum of the star and planet radii so the bodies start clear
      * @param tangentialSpeedMetresPerSecond the initial tangential speed; positive and finite
      * @return a ready-to-run, not-yet-started attempt
-     * @throws IllegalArgumentException if any argument is not positive and finite, or if the planet's
-     *                                  surface would reach the star's surface at the initial distance
+     * @throws IllegalArgumentException if any argument is not positive and finite, or if the planet's surface would reach the star's surface at the initial distance
      */
     public Level0Attempt createAttempt(
             final double planetMassKilograms,
@@ -104,18 +78,15 @@ public final class Level0Scenario
         final double minimumSeparation = STAR_RADIUS + planetRadiusMetres;
         if (orbitalDistanceMetres <= minimumSeparation)
         {
-            throw new IllegalArgumentException(
-                    "orbitalDistanceMetres must exceed the star and planet radii sum ("
+            throw new IllegalArgumentException("orbitalDistanceMetres must exceed the star and planet radii sum ("
                             + minimumSeparation + ") so the bodies start clear, was: "
                             + orbitalDistanceMetres);
         }
 
-        final double circularSpeed =
-                circularSpeedMetresPerSecond(planetMassKilograms, orbitalDistanceMetres);
+        final double circularSpeed = circularSpeedMetresPerSecond(planetMassKilograms, orbitalDistanceMetres);
 
         final Vector3D relativePosition = new Vector3D(orbitalDistanceMetres, 0.0, 0.0);
         final Vector3D relativeVelocity = new Vector3D(0.0, tangentialSpeedMetresPerSecond, 0.0);
-
         final SimulationEngine engine = new SimulationEngine(
                 centreOfMassBodies(relativePosition, relativeVelocity,
                         planetMassKilograms, planetRadiusMetres),
@@ -123,11 +94,9 @@ public final class Level0Scenario
                 TIME_STEP_SECONDS,
                 new VelocityVerletIntegrator());
 
-        final ScenarioObservationCadence cadence =
-                new ScenarioObservationCadence(TIME_STEP_SECONDS, STEPS_PER_OBSERVATION);
+        final ScenarioObservationCadence cadence = new ScenarioObservationCadence(TIME_STEP_SECONDS, STEPS_PER_OBSERVATION);
 
-        final ScenarioSession session = new ScenarioSession(
-                engine, new Level0PlanetCreationCompletionPolicy(), cadence);
+        final ScenarioSession session = new ScenarioSession(engine, new Level0PlanetCreationCompletionPolicy(), cadence);
 
         return new Level0Attempt(
                 session, STAR_ID, PLANET_ID,

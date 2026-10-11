@@ -17,7 +17,6 @@ public final class Level0PlanetCreationCompletionPolicy implements ScenarioCompl
     public ScenarioEvaluation evaluate(final ScenarioObservation observation)
     {
         // Unconditional: once a committed observation exists, the planet has been created.
-        // Level 0 never returns FAIL or ASSESSMENT_INVALID — it has no reachable failure state.
         return ScenarioEvaluation.COMPLETE;
     }
 }

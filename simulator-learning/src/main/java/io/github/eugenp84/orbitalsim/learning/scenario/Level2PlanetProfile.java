@@ -6,8 +6,7 @@ import io.github.eugenp84.orbitalsim.core.math.PhysicalConstants;
  * The four physical quantities compared in Level 2.
  * <p>
  * A learner-created planet is constructed from mass and radius; mean density and surface
- * gravitational acceleration are then derived for a spherical body. Reference planets may use
- * authoritative published values for all four quantities.
+ * gravitational acceleration are then derived for a spherical body. Reference planets may use authoritative published values for all four quantities.
  *
  * @param massKilograms             mass in kilograms
  * @param radiusMetres              volumetric mean radius in metres

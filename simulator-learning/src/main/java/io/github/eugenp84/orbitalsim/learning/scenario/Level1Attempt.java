@@ -5,13 +5,6 @@ import java.util.Objects;
 /**
  * One assembled, ready-to-run Level 1 attempt, together with the values a presentation layer needs to describe and render it.
  * <p>
- * The session is the sole advancement boundary while the attempt is active (ADR-008 p.4):
- * the caller drives the scenario through it and does not hold or advance the underlying engine.
- * <p>
- * Although only {@link Level1Scenario} constructs these in practice, the record is public and so validates its own numeric contract:
- * it presents itself as an assembled valid attempt, and {@link #speedFractionOfCircular()} depends on a positive finite denominator.
- * A public record's canonical constructor cannot be narrowed, so validation rather than restricted construction is what makes
- * the type trustworthy.
  *
  * @param session                      the runnable scenario
  * @param referenceBodyId              the body the orbit is assessed about, for locating it within published snapshots
@@ -20,6 +13,8 @@ import java.util.Objects;
  * @param circularSpeedMetresPerSecond the analytic circular speed at that radius — the target the learner is aiming at, and a natural reference for input;
  *                                     positive and finite
  * @param initialSpeedMetresPerSecond  the speed this attempt was created with. positive and finite
+ *
+ * @author Eugeniu PLATITA
  */
 public record Level1Attempt(
         ScenarioSession session,

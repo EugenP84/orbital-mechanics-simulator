@@ -12,35 +12,6 @@ import java.util.Objects;
  * The completion policy for L3 (Gravitational Perturbation):
  * a controlled three-body experiment that reaches a fixed observation horizon while measuring how strongly the target planet's orbit is perturbed.
  * <p>
- * Per the Level 3 behavioural specification, this policy is deliberately simpler than Level 1's:
- * it has no revolution counting, no sampling-adequacy gate, no energy-integrity check, and no ejection
- * classifier (calibration established no numerically robust ejection threshold within or immediately
- * beyond the learner envelope). Its decisions are:
- * <ul>
- *   <li><strong>FAIL</strong> on physical surface contact — the target intersecting the star, or the
- *       target intersecting the perturbing planet — using centre-to-centre distance against the sum
- *       of physical radii read from each body's definition. Detection is performed at learning
- *       observations, so a contact beginning and ending entirely between two observations is not
- *       guaranteed to be detected; the calibrated learner envelope stays far from surface contact
- *       (minimum target–star ≈ 0.787 AU, target–perturber ≈ 0.257 AU), so this is a defensive
- *       condition rather than an outcome the envelope reaches.</li>
- *   <li><strong>COMPLETE</strong> when elapsed scenario time reaches the observation horizon without a
- *       physical failure. Completion means the experiment ran to its horizon, not that the orbit is
- *       stable.</li>
- *   <li><strong>CONTINUE</strong> otherwise.</li>
- * </ul>
- * Numerical breakdown is handled by the session before the policy is consulted, so it is not
- * duplicated here.
- * <p>
- * The policy accumulates the maximum osculating target eccentricity (relative to the star, with
- * {@code mu = G(M_star + M_target)} — the perturber acts through the evolving relative state, not
- * through mu) and exposes it through {@link Level3ProgressSource}. The accumulator is seeded from the
- * initial snapshot, so {@link #maxEccentricity()} is valid before the first observation. The three
- * bodies are resolved by their identities, and radii come from their body definitions rather than
- * being duplicated as policy constants.
- * <p>
- * These are instantaneous osculating Sun–target elements within a three-body simulation, not conserved
- * Keplerian elements.
  *
  * @author Eugeniu PLATITA
  */
@@ -55,8 +26,7 @@ public final class Level3CompletionPolicy implements ScenarioCompletionPolicy, L
     private double maxEccentricity;
 
     /**
-     * @param initialSnapshot        the committed initial state, used to seed the eccentricity
-     *                               baseline; never null and must contain all three bodies
+     * @param initialSnapshot        the committed initial state, used to seed the eccentricity baseline; never null and must contain all three bodies
      * @param starId                 the star's id
      * @param targetId               the target planet's id (the orbit measured and assessed)
      * @param perturberId            the perturbing planet's id
@@ -64,8 +34,7 @@ public final class Level3CompletionPolicy implements ScenarioCompletionPolicy, L
      *                               positive and finite
      * @param horizonSeconds         the observation horizon; positive and finite
      * @throws NullPointerException     if a reference is null
-     * @throws IllegalArgumentException if an id is blank, ids are not distinct, a numeric argument is
-     *                                  out of range, or a body id is not present in the snapshot
+     * @throws IllegalArgumentException if an id is blank, ids are not distinct, a numeric argument is out of range, or a body id is not present in the snapshot
      */
     public Level3CompletionPolicy(
             final SimulationSnapshot initialSnapshot,

@@ -3,7 +3,7 @@ import io.github.eugenp84.orbitalsim.core.math.StateVector;
 import java.util.Objects;
 
 /**
- * Data-neutral initial conditions for the canonical Level 4 Apophis experiment.
+ * Data-neutral initial conditions for the canonical L4 Apophis experiment.
  * <p>
  * The states are heliocentric Cartesian states in the simulator's SI units and must refer to the same TDB epoch.
  * This record deliberately belongs to the learning module rather than exposing a Horizons data-layer type across the scenario boundary.

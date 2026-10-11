@@ -2,10 +2,6 @@ package io.github.eugenp84.orbitalsim.learning.scenario;
 
 /**
  * Calibrated acceptance thresholds for the Level 1 stable-orbit assessment (ADR-008 p.6).
- * <p>
- * Grouped because they are adjacent same-typed doubles edited together during calibration, where a transposed pair would compile silently, and because
- * ADR-008-p6 requires the calibrated numbers to have one documented home rather than appearing as unexplained constants.
- * <p>
  *
  * @param requiredRevolutions complete revolutions the learner must sustain; positive
  * @param maximumEccentricity largest eccentricity accepted at the completion  checkpoint; finite, in [0, 1).

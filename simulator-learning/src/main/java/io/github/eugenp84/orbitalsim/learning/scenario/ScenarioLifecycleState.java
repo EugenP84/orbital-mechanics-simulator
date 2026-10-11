@@ -3,12 +3,8 @@ package io.github.eugenp84.orbitalsim.learning.scenario;
 /**
  * The progression states a scenario session may occupy (ADR-008 §3).
  * <p>
- * Not every state is reachable in every scenario: a scenario with no failure
- * condition never enters {@link #FAILED}. Reachability is a property of the
- * scenario's completion policy, not of this model.
- * <p>
- * Scenario progression is distinct from simulation pause in the engine sense:
- * the engine owns no lifecycle concept (ADR-006 §2), so pausing is entirely a learning-layer concern.
+ *
+ * @author Eugeniu PLATITA
  */
 public enum ScenarioLifecycleState
 {

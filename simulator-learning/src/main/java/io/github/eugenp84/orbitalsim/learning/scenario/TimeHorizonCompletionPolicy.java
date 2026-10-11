@@ -3,14 +3,10 @@ package io.github.eugenp84.orbitalsim.learning.scenario;
 /**
  * Completes a scenario once it has run for a configured amount of elapsed simulated time.
  * <p>
- * The comparison uses {@link ScenarioObservation#elapsedScenarioSeconds()},
- * which is measured from the scenario's start, not the engine's clock;
- * a session beginning from an already-advanced simulation therefore still runs for the full horizon.
- * <p>
- * This is the simplest genuinely dynamic completion condition: it depends on committed simulation state rather than on user action,
- * but requires no orbital mathematics. It has no failure condition.
- * <p>
+ *
  * Because the policy is evaluated only at observation boundaries, completion is reported at the first observation <em>at or after</em> the horizon, not at the instant the horizon is crossed (see {@link ScenarioSession}).
+ *
+ * @author Eugeniu PLATITA
  */
 public final class TimeHorizonCompletionPolicy implements ScenarioCompletionPolicy
 {
@@ -25,8 +21,7 @@ public final class TimeHorizonCompletionPolicy implements ScenarioCompletionPoli
     {
         if (!Double.isFinite(horizonSeconds) || horizonSeconds <= 0.0)
         {
-            throw new IllegalArgumentException(
-                    "horizonSeconds must be positive and finite, was: " + horizonSeconds);
+            throw new IllegalArgumentException("horizonSeconds must be positive and finite, was: " + horizonSeconds);
         }
         this.horizonSeconds = horizonSeconds;
     } // end of TimeHorizonCompletionPolicy() -----------

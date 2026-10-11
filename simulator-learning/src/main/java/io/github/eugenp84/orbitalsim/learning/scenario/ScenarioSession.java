@@ -11,32 +11,6 @@ import java.util.Optional;
  * Executes a scenario: owns its progression state, drives the simulation at a bounded learning cadence, and evaluates its completion policy against each
  * committed observation (ADR-008).
  *
- * <h2>Advancement ownership</h2>
- * While a scenario is active, all application-level advancement must be routed through the session, so that no simulated time passes unobserved and corrupts scenario evaluation (ADR-008 §4).
- * The session does not expose its engine reference.
- * It cannot, however, prevent a caller that constructed the engine from retaining its own reference and advancing it directly: this is a <strong>composition-root ownership rule</strong>, not a guarantee this class can enforce.
- *
- * <h2>Learning cadence</h2>
- * Evaluation occurs at a bounded simulated interval, distinct from both the numerical timestep and the rendering frame rate.
- * The cadence arrives as a {@link ScenarioObservationCadence} rather than a bare step count, because a completion policy may need the same cadence to validate its own assumptions;
- * sharing one object removes any route for the two to disagree.
- * The session verifies the cadence describes the engine it drives.
- * <p>
- * A request smaller than one interval, or the sub-interval remainder of a larger request, is retained in a session-level accumulator and consumed by a later request, keeping observations uniformly spaced:
- * a 70-second request at a 30-second interval yields observations at 30 and 60, retaining 10.
- *
- * <h2>Evaluation precision</h2>
- * Because the policy is consulted only at observation boundaries, completion is detected at the first observation at or after the condition becomes true.
- * With a 30-second interval and a 65-second horizon, completion is reported at 90 sec.
- *
- * <h2>Termination</h2>
- * A scenario may terminate for several distinct reasons.
- * A policy may report success ({@link ScenarioLifecycleState#COMPLETED}), learner-facing failure
- * ({@link ScenarioTerminationReason#POLICY_FAILURE}), or that the attempt can no longer be assessed reliably
- * ({@link ScenarioTerminationReason#ASSESSMENT_INVALID}) — from which no learner-facing conclusion should be drawn.
- * Independently, numerical breakdown reported by the engine terminates the scenario with {@link ScenarioTerminationReason#SIMULATION_BREAKDOWN};
- * the policy is not consulted, because the committed result cannot be trusted.
- * <p>
  * A completion policy returning null violates its contract; this is a programming defect and propagates as {@link NullPointerException} .
  * Not classified as a scenario outcome.
  *
@@ -62,9 +36,7 @@ public final class ScenarioSession
     private final ScenarioObservationCadence cadence;
     private final double observationIntervalSeconds;
     private final double intervalThresholdSeconds;
-
     private ScenarioLifecycleState state = ScenarioLifecycleState.NOT_STARTED;
-
     private ScenarioTerminationReason terminationReason;
     private double pendingSeconds;
     private double baselineSeconds;
@@ -83,8 +55,7 @@ public final class ScenarioSession
     {
 
         this.engine = Objects.requireNonNull(engine, "engine must not be null");
-        this.completionPolicy =
-                Objects.requireNonNull(completionPolicy, "completionPolicy must not be null");
+        this.completionPolicy = Objects.requireNonNull(completionPolicy, "completionPolicy must not be null");
         this.cadence = Objects.requireNonNull(cadence, "cadence must not be null");
 
         // Exact comparison, not a tolerance: these are two references to the same configured value, so "nearly equal" would mean one is wrong.

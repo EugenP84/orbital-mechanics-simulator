@@ -10,7 +10,6 @@ import io.github.eugenp84.orbitalsim.core.physics.GravitationalBodyConfig;
 import io.github.eugenp84.orbitalsim.core.physics.NBodyAccelerationCalculator;
 //import io.github.eugenp84.orbitalsim.core.simulation.BodySnapshot;
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationEngine;
-
 import io.github.eugenp84.orbitalsim.core.simulation.TwoBodyInitialState;
 
 import java.util.List;
@@ -18,31 +17,13 @@ import java.util.List;
 /**
  * Assembles a runnable Level 1 attempt from the learner's chosen orbital speed.
  * <p>
- * This layer exists so that no caller — least of all the user interface — has to know how to construct a valid attempt.
- * Getting any part of it wrong (frame, integrator, gravitational parameter, cadence agreement) would produce
- * an assessment that looks plausible and is not, so the assembly lives in one place and enforces the Level 1 invariants itself.
  *
- * <h2>Invariants enforced here</h2>
- * <ul>
- *   <li><strong>Planar initial state.</strong> The learner supplies a scalar
- *       tangential speed, not a vector, so no out-of-plane component can be introduced. Level 1's sampling bound and revolution counting are valid
- *       only in the reference plane.</li>
- *   <li><strong>Centre-of-mass frame.</strong> The bodies are placed either side of the origin in inverse mass proportion, giving zero net
- *       momentum, so the energy-integrity measure is not distorted by a bulk kinetic term (ADR-003).</li>
- *   <li><strong>Fixed assessed integrator.</strong> Velocity Verlet, so a correct answer cannot fail because of the integrator (ADR-008 §5).
- *       Method comparison belongs to a separate exploration mode.</li>
- *   <li><strong>One shared cadence</strong> between session and policy, so the sampling validation applies to the cadence actually executed.</li>
- * </ul>
- *
- * <h2>Provisional configuration</h2>
- * The physical setup and the acceptance thresholds below are <strong>provisional and not yet calibrated</strong>.
- * ADR-008 p.6 requires them to be justified empirically before final evaluation; they are chosen here to be plausible and to let the level run, not because evidence has selected them.
+ * @author Eugeniu PLATITA
  */
 public final class Level1Scenario {
 
     private static final String STAR_ID = "l1-star";
     private static final String PLANET_ID = "l1-planet";
-
     private static final double STAR_MASS = PhysicalConstants.SOLAR_MASS;
     private static final double STAR_RADIUS = PhysicalConstants.SOLAR_RADIUS;
     private static final double PLANET_MASS = PhysicalConstants.EARTH_MASS;
@@ -51,8 +32,7 @@ public final class Level1Scenario {
 
     /**
      * Six hours. Chosen to give a learning-observation cadence substantially finer than the orbital timescale of ordinary Level 1 attempts.
-     * Whether a particular bound attempt is adequately sampled is determined by the completion policy against that attempt's own initial orbit,
-     * not by this value alone. Provisional.
+     * Whether a particular bound attempt is adequately sampled is determined by the completion policy against that attempt's own initial orbit, not by this value alone. Provisional.
      */
     private static final double TIME_STEP_SECONDS = 21_600.0;
     private static final int STEPS_PER_OBSERVATION = 1;
@@ -129,7 +109,6 @@ public final class Level1Scenario {
         engine.addListener(hintEngine);
 
         ScenarioObservationCadence cadence = new ScenarioObservationCadence(TIME_STEP_SECONDS, STEPS_PER_OBSERVATION);
-
         Level1StableOrbitCompletionPolicy policy = new Level1StableOrbitCompletionPolicy(engine.snapshot(), STAR_ID, PLANET_ID, gravitationalParameter, cadence, PROVISIONAL_CRITERIA);
 
         return new Level1Attempt(

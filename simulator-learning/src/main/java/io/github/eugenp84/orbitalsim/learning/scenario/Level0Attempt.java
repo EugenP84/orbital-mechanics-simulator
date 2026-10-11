@@ -6,10 +6,6 @@ import java.util.Objects;
  * A ready-to-run Level 0 attempt: a valid star–planet system built from the learner's chosen planet
  * parameters — mass, radius, initial orbital distance, and tangential speed.
  * <p>
- * Level 0 introduces the parameter space before any orbital objective is imposed, so the learner's tangential speed is used as given.
- * The planet is not forced onto a circular orbit.
- * The circular speed for the chosen distance is computed by scenario composition and exposed here only as a read-only reference value,
- * to help the learner relate their choice to the stable-orbit task of Level 1.
  *
  * @param session                        the scenario session driving the created system; never null
  * @param referenceBodyId                the star's id; never null or blank

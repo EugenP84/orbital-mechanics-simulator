@@ -14,21 +14,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Assembles Level 4: the canonical 99942 Apophis close approach of 13 April 2029.
+ * Assembles L4: the canonical 99942 Apophis close approach of 13 April 2029.
  * <p>
- * Production initial conditions are supplied through {@link Level4InitialConditions}.
- * This keeps the learning module independent of the Horizons adapter while allowing the application layer to map
- * the verified data-layer fixture into the scenario.
- * The scenario accepts only the empirically selected one-day-before epoch, JD 2462239.407091595 TDB.
- * <p>
- * The model contains the Sun and Earth as mutually contributing gravitational sources.
- * Apophis is a restricted body: it experiences their gravity but exerts no back-reaction.
- * The Sun begins at the heliocentric origin with zero velocity, matching the origin of the supplied Earth and Apophis
- * states. Velocity Verlet uses the frozen 112.5-second timestep, and every integration boundary is a learning observation.
- * The experiment completes after two simulated days.
- * <p>
- * Apophis' representative mass is 4.9e10 kg. Its 170 m representational radius corresponds to the 340 m mean diameter used for the project experiment.
- * Neither value influences the Sun-Earth trajectory because Apophis is non-contributing; its mass also cancels from its own acceleration.
  *
  * @author Eugeniu PLATITA
  */

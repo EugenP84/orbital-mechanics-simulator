@@ -6,28 +6,12 @@ import io.github.eugenp84.orbitalsim.core.orbital.OrbitalStateCalculator;
 import io.github.eugenp84.orbitalsim.core.simulation.BodySnapshot;
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationListener;
 import io.github.eugenp84.orbitalsim.core.simulation.SimulationSnapshot;
-
 import java.util.Objects;
 import java.util.Optional;
 
 /**
  * Produces Level 1 guidance by observing committed simulation states through the same
  * {@link SimulationListener} boundary the renderer uses (ADR-008 p9), so it is decoupled from the simulation and can be disabled without affecting physics or rendering.
- * It observes at the learning
- * cadence, because it is registered on the engine the session advances one observation at a time — not on numerical substeps and not on the presentation clock.
- * <p>
- * <strong>Direction is fixed by the attempt.</strong> The too-slow / too-fast judgement comes from the <em>configured initial speed</em> relative to the analytic circular speed — the only quantity
- * the learner sets.
- * It is deliberately not derived from the body's instantaneous speed, which on an eccentric orbit is slower near apoapsis and faster near periapsis and would otherwise make the same immutable attempt alternate between "speed up" and "slow down".
- * <p>
- * <strong>Live state validates, it does not steer.</strong> Each observation is used only to confirm whether the orbit is actually unbound (specific orbital energy ≥ 0);
- * an unbound orbit overrides the directional bands, because reducing an escape trajectory toward circular is the guidance that matters.
- * The magnitude bands here are pedagogical and are intentionally distinct from the completion policy's acceptance thresholds (ADR-008 p.6):
- * assessment decides whether the learner met the level criteria; hints point toward the analytic circular ideal.
- * <p>
- * Notifications arrive on the thread that advanced the engine — the JavaFX Application Thread in the current app — and the latest hint is read from that same thread,
- * so no synchronisation is needed.
- * This would need revisiting only if advancement moved off that thread.
  *
  * @author Eugeniu PLATITA
  */
@@ -39,7 +23,6 @@ public final class Level1HintEngine implements SimulationListener, HintSource
     private static final double NEAR_CIRCULAR_UPPER_FRACTION = 1.05;
     private static final double WELL_BELOW_UPPER_FRACTION = 0.80;
     private static final double WELL_ABOVE_LOWER_FRACTION = 1.20;
-
     private final String referenceBodyId;
     private final String learnerBodyId;
     private final double gravitationalParameter;
@@ -87,8 +70,7 @@ public final class Level1HintEngine implements SimulationListener, HintSource
     {
         if (isUnbound(snapshot))
         {
-            return new Hint(HintCategory.UNBOUND,
-                    "This initial speed produces an unbound trajectory. Reduce it below escape speed.");
+            return new Hint(HintCategory.UNBOUND, "This initial speed produces an unbound trajectory. Reduce it below escape speed.");
         }
         return directionalHint();
     }
