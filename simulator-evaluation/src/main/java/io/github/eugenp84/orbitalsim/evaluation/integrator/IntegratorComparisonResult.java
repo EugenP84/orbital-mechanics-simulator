@@ -7,8 +7,7 @@ package io.github.eugenp84.orbitalsim.evaluation.integrator;
  * @param completedSteps               successfully committed integration steps
  * @param simulationTimeSeconds        elapsed simulated time in seconds
  * @param maxRelativeEnergyDeviation   greatest |E(t) - E(0)| / |E(0)|
- * @param maxTrajectoryErrorMetres     greatest relative-position error against
- *                                     the analytical circular orbit, in metres
+ * @param maxTrajectoryErrorMetres     greatest relative-position error against the analytical circular orbit, in metres
  * @param accelerationEvaluations      acceleration-model invocations
  *
  * @author Eugeniu PLATITA
