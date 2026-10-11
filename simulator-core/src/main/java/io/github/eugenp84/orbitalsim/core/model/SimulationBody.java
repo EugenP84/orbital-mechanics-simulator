@@ -12,9 +12,8 @@ import java.util.Objects;
  * SimulationBody across simulation steps; only the state reference is
  * replaced, never the object itself (see ADR-002, Option C rationale).
  * <p>
- * State replacement is an atomic reference swap of a complete immutable
- * snapshot. Callers (integrators via the engine) must compute all next
- * states before committing any of them.
+ * State replacement is an atomic reference swap of a complete immutable snapshot.
+ * Callers (integrators via the engine) must compute all next states before committing any of them.
  *
  * @author Eugeniu PLATITA
  */

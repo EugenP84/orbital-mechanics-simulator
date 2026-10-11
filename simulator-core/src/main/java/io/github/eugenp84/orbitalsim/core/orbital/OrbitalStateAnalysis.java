@@ -1,18 +1,17 @@
 package io.github.eugenp84.orbitalsim.core.orbital;
 
 import io.github.eugenp84.orbitalsim.core.math.Vector3D;
-
 import java.util.Objects;
 import java.util.OptionalDouble;
 
 /**
- * Instantaneous orbital quantities for one relative state (ADR-009 p.5).
+ * Instantaneous orbital quantities for one relative state.
  * <p>
  * The quantities are produced together (not by separate accessors) so a consumer is guaranteed values derived from identical inputs;
  * sharing intermediate arithmetic is a secondary benefit, immaterial at this scale.
  * <p>
  * This type reports physics and deliberately offers no {@code isEscaping()} or {@code isStableOrbit()}:
- * what an energy or eccentricity means is a  pedagogical judgement owned by the learning layer (ADR-008 §7).
+ * what an energy or eccentricity means is a  pedagogical judgement owned by the learning layer.
  * <p>
  * Being a public value type, it enforces the invariants it documents, so an  instance is valid independently of the calculator.
  * It does not re-derive the relationships between fields; that would duplicate the calculator.
@@ -23,8 +22,7 @@ import java.util.OptionalDouble;
  * @param specificOrbitalEnergy {@code ε = v²/2 − μ/r} in J/kg, relative to the two-body model implied by the caller's μ.
  *        Sign gives bound / parabolic / unbound.
  * @param eccentricityVector dimensionless, toward periapsis where one exists.
- * @param eccentricity its magnitude. Radial motion has {@code e = 1} whatever its energy, so eccentricity alone cannot separate bound from unbound —
- *        use {@code specificOrbitalEnergy} (ADR-009 §5).
+ * @param eccentricity its magnitude. Radial motion has {@code e = 1} whatever its energy, so eccentricity alone cannot separate bound from unbound — use {@code specificOrbitalEnergy}.
  * @param semiMajorAxis {@code a = −μ / 2ε} in metres. Absent means parabolic boundary.
  *        A near-parabolic orbit has a genuine, very large {@code a} and is present.
  * @param referencePlaneAzimuth {@code atan2(r_y, r_x)} normalised to
@@ -56,29 +54,24 @@ public record OrbitalStateAnalysis(
 
         if (!Double.isFinite(specificOrbitalEnergy))
         {
-            throw new IllegalArgumentException(
-                    "specificOrbitalEnergy must be finite, was: " + specificOrbitalEnergy);
+            throw new IllegalArgumentException("specificOrbitalEnergy must be finite, was: " + specificOrbitalEnergy);
         }
-        if (!Double.isFinite(eccentricity) || eccentricity < 0.0) {
-            throw new IllegalArgumentException(
-                    "eccentricity must be finite and non-negative, was: " + eccentricity);
+        if (!Double.isFinite(eccentricity) || eccentricity < 0.0)
+        {
+            throw new IllegalArgumentException("eccentricity must be finite and non-negative, was: " + eccentricity);
         }
 
         // Absence already carries the parabolic meaning, so a present value must be a real quantity. otherwise infinity would silently become a second contradictory way of saying the same thing.
         if (semiMajorAxis.isPresent() && !Double.isFinite(semiMajorAxis.getAsDouble())) {
-            throw new IllegalArgumentException(
-                    "a present semiMajorAxis must be finite, was: " + semiMajorAxis.getAsDouble());
+            throw new IllegalArgumentException("a present semiMajorAxis must be finite, was: " + semiMajorAxis.getAsDouble());
         }
 
         // Normalisation is part of the contract, so callers can compare and unwrap azimuths without rechecking the range.
         if (referencePlaneAzimuth.isPresent())
         {
             double azimuth = referencePlaneAzimuth.getAsDouble();
-            if (!Double.isFinite(azimuth) || azimuth < 0.0 || azimuth >= TWO_PI)
-            {
-
-                throw new IllegalArgumentException(
-                        "referencePlaneAzimuth must be within [0, 2pi), was: " + azimuth);
+            if (!Double.isFinite(azimuth) || azimuth < 0.0 || azimuth >= TWO_PI) {
+                throw new IllegalArgumentException("referencePlaneAzimuth must be within [0, 2pi), was: " + azimuth);
             }
         }
     } // ---------------- end OrbitalStateAnalysis() -======================--------------------------------
@@ -92,8 +85,7 @@ public record OrbitalStateAnalysis(
     private static void requireFiniteComponents(Vector3D vector, String name) {
         if (!Double.isFinite(vector.x()) || !Double.isFinite(vector.y()) || !Double.isFinite(vector.z()))
         {
-            throw new IllegalArgumentException(
-                    name + " must have finite components, was: " + vector);
+            throw new IllegalArgumentException(name + " must have finite components, was: " + vector);
         }//end if
     }
 }

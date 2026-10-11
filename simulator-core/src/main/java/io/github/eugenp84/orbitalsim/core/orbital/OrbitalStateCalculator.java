@@ -5,15 +5,15 @@ import java.util.Objects;
 import java.util.OptionalDouble;
 
 /**
- * Derives instantaneous orbital quantities from a relative state (ADR-009).
+ * Derives instantaneous orbital quantities from a relative state.
  * Stateless, and deliberately ignorant of which body is the reference, which scenario is running, and where the data came from.
  * <p>
  * μ is supplied by the caller because the correct value depends on the physical model — {@code G(M + m)} for a coupled two-body orbit, {@code GM} for a
  * restricted test particle.
  * Those are different models, and only the caller knows which applies: this class performs mathematics,
- * it does not choose a gravitational model (ADR-009 p4).
+ * it does not choose a gravitational model.
  * <p>
- * Because every quantity derives from differences, results are unchanged by a common spatial translation or Galilean boost of both bodies (ADR-009 p.3).
+ * Because every quantity derives from differences, results are unchanged by a common spatial translation or Galilean boost of both bodies.
  *
  * @author Eugeniu PLATITA
  */
@@ -34,8 +34,7 @@ public final class OrbitalStateCalculator
      * @param gravitationalParameter μ in m³/s²; positive and finite
      * @return the derived instantaneous quantities
      * @throws NullPointerException     if either vector is null
-     * @throws IllegalArgumentException if a component is non-finite, the bodies are coincident, μ is not positive and finite,
-     *              or the inputs are so extreme that a derived quantity is not representable
+     * @throws IllegalArgumentException if a component is non-finite, the bodies are coincident, μ is not positive and finite, or the inputs are so extreme that a derived quantity is not representable
      */
     public static OrbitalStateAnalysis analyse(
             Vector3D relativePosition,
@@ -60,8 +59,7 @@ public final class OrbitalStateCalculator
         double vy = relativeVelocity.y();
         double vz = relativeVelocity.z();
 
-        // Scaled magnitude: squaring first would overflow for large components whose true norm is finite, and underflow for subnormal ones
-        // the latter reporting a genuinely separated pair as coincident.
+        // Scaled magnitude: squaring first would overflow for large components whose true norm is finite, and underflow for subnormal ones the latter reporting a genuinely separated pair as coincident.
         double distance = Math.hypot(Math.hypot(rx, ry), rz);
         if (distance == 0.0)
         {
@@ -83,8 +81,7 @@ public final class OrbitalStateCalculator
         double energy = speedSquared / 2.0 - gravitationalParameter / distance;
         if (!Double.isFinite(energy))
         {
-            throw new IllegalArgumentException("specific orbital energy is not representable: distance=" + distance
-                            + ", mu=" + gravitationalParameter);
+            throw new IllegalArgumentException("specific orbital energy is not representable: distance=" + distance + ", mu=" + gravitationalParameter);
         }
 
         double scale = speedSquared - gravitationalParameter / distance;
@@ -93,9 +90,7 @@ public final class OrbitalStateCalculator
                 (scale * ry - radialDotVelocity * vy) / gravitationalParameter,
                 (scale * rz - radialDotVelocity * vz) / gravitationalParameter);
 
-        double eccentricity = Math.hypot(
-                Math.hypot(eccentricityVector.x(), eccentricityVector.y()),
-                eccentricityVector.z());
+        double eccentricity = Math.hypot(Math.hypot(eccentricityVector.x(), eccentricityVector.y()), eccentricityVector.z());
 
 
         if (!Double.isFinite(eccentricity))
@@ -129,9 +124,7 @@ public final class OrbitalStateCalculator
 
         double a = (-0.5 * gravitationalParameter) / energy;
         if (!Double.isFinite(a)) {
-            throw new IllegalArgumentException(
-                    "semi-major axis is not representable: mu=" + gravitationalParameter
-                            + ", specific energy=" + energy);
+            throw new IllegalArgumentException("semi-major axis is not representable: mu=" + gravitationalParameter + ", specific energy=" + energy);
         }
         return OptionalDouble.of(a);
     }
